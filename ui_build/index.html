@@ -92,6 +92,7 @@ pre{white-space:pre-wrap;word-break:break-all}
     <button class="tab-btn pb-2 text-sm font-medium" onclick="switchTab('register',this)">🗝️ 注册密钥</button>
     <button class="tab-btn pb-2 text-sm font-medium" onclick="switchTab('pqdemo',this)">🧪 PQ 签名</button>
     <button class="tab-btn pb-2 text-sm font-medium" onclick="switchTab('privacy',this)">🛡️ Privacy</button>
+    <button class="tab-btn pb-2 text-sm font-medium" onclick="switchTab('docs',this)">📄 Docs</button>
   </div>
 
   <!-- Tab: Explorer -->
@@ -353,6 +354,74 @@ pre{white-space:pre-wrap;word-break:break-all}
         <div>Balance: <span id="testWalletBal">0</span> ARC</div>
         <div>Stealth Key: <span id="testWalletKeyStatus" class="text-yellow-300">Not registered</span></div>
       </div>
+    </div>
+  </div>
+</div>
+
+<!-- Tab: Docs -->
+<div id="tab-docs" class="tab-content hidden">
+  <div class="card rounded-xl p-6 glow mb-6">
+    <h2 class="text-lg font-semibold mb-4">📄 Documentation & Resources</h2>
+    
+    <div class="mb-6">
+      <h3 class="text-sm font-semibold text-blue-300 mb-2">📖 Circle's Post-Quantum Security Roadmap</h3>
+      <p class="text-xs text-gray-400 mb-3">The foundational whitepaper that inspired this project. Covers phased migration, hybrid signatures, account recovery, and upgradable architecture.</p>
+      <a href="https://community.arc.io/home/blogs/circles-post-quantum-security-roadmap-securing-blockchains-smart-contracts-and-digital-assets-for-the-quantum-era-2026-05-30?utm_campaign=45486113-Post-Quantum%20Whitepaper&utm_source=arc-discord&utm_medium=arc-gradual&utm_content=post-quantum-whitepaper-blog" target="_blank" class="inline-block px-4 py-2 rounded-lg text-sm font-medium text-white bg-blue-600 hover:bg-blue-700">📄 Read Circle PQ Whitepaper →</a>
+    </div>
+
+    <div class="grid md:grid-cols-2 gap-6 mb-6">
+      <div class="bg-gray-800/30 rounded-lg p-4">
+        <h3 class="text-sm font-semibold text-emerald-300 mb-3">🔗 Quick Links</h3>
+        <ul class="space-y-2 text-xs">
+          <li><a href="https://github.com/lzmaks10/pq-secure-arc" target="_blank" class="text-blue-400 hover:text-blue-300">🐙 GitHub Repository →</a></li>
+          <li><a href="https://pq-secure-arc.vercel.app" target="_blank" class="text-blue-400 hover:text-blue-300">🌐 Live DApp →</a></li>
+          <li><a href="https://testnet.arcscan.app" target="_blank" class="text-blue-400 hover:text-blue-300">🔍 Arc Testnet Explorer →</a></li>
+          <li><a href="https://rpc.testnet.arc.network" target="_blank" class="text-blue-400 hover:text-blue-300">⛓️ Arc RPC →</a></li>
+        </ul>
+      </div>
+
+      <div class="bg-gray-800/30 rounded-lg p-4">
+        <h3 class="text-sm font-semibold text-purple-300 mb-3">📜 Deployed Contracts</h3>
+        <ul class="space-y-2 text-xs">
+          <li><span class="text-gray-500">ECDSAModule:</span> <a href="https://testnet.arcscan.app/address/0xbf2ba8ede210d184c10b4b4D3E183B0a7CD1F2E3" target="_blank" class="text-blue-400">0xbf2ba8…F2E3</a></li>
+          <li><span class="text-gray-500">HashBasedModule:</span> <a href="https://testnet.arcscan.app/address/0x388E0c1AB76A5A8C7C4567Dd8566496f96620aaE" target="_blank" class="text-blue-400">0x388E0c…aaE</a></li>
+          <li><span class="text-gray-500">HybridModule:</span> <a href="https://testnet.arcscan.app/address/0x48bB3b57561d913d36634e991501fD1C7a578186" target="_blank" class="text-blue-400">0x48bB3b…186</a></li>
+          <li><span class="text-gray-500">PrivacyManager:</span> <a href="https://testnet.arcscan.app/address/0xE6C665048Bfcc1A2D9C9331BF8D586532216C136" target="_blank" class="text-blue-400">0xE6C665…C136</a></li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="grid md:grid-cols-2 gap-6 mb-6">
+      <div class="bg-gray-800/30 rounded-lg p-4">
+        <h3 class="text-sm font-semibold text-yellow-300 mb-3">🏗️ Architecture</h3>
+        <ul class="space-y-1.5 text-xs text-gray-400">
+          <li><span class="text-gray-300">PQAccount</span> — Smart account, verifies sigs & executes calls</li>
+          <li><span class="text-gray-300">ISignatureModule</span> — Pluggable sig verification interface</li>
+          <li><span class="text-gray-300">ECDSAModule</span> — Classic ecrecover, current mainstream</li>
+          <li><span class="text-gray-300">HashBasedModule</span> — Merkle tree + keccak256, PQ-simulated</li>
+          <li><span class="text-gray-300">HybridModule</span> — Dual sig: ECDSA + Hash, migration bridge</li>
+          <li><span class="text-gray-300">MigrationManager</span> — 7-day timelocked module upgrades</li>
+          <li><span class="text-gray-300">RecoveryManager</span> — M-of-N guardian social recovery</li>
+          <li><span class="text-gray-300">PrivacyManager</span> — Stealth addresses & ECDH-encrypted txs</li>
+        </ul>
+      </div>
+
+      <div class="bg-gray-800/30 rounded-lg p-4">
+        <h3 class="text-sm font-semibold text-orange-300 mb-3">🧪 Test Accounts on Arc</h3>
+        <ul class="space-y-1.5 text-xs">
+          <li><span class="text-emerald-400">T1 PQ-Native</span> — <a href="https://testnet.arcscan.app/address/0xbE98b7057476cCc007b7bA490440762C8587C416" target="_blank" class="text-blue-400">0xbE98b7…7C416</a></li>
+          <li><span class="text-yellow-400">T2 Migrating</span> — <a href="https://testnet.arcscan.app/address/0xbD02D9b066eE4E4023A861D8fff7F881cD2C19C8" target="_blank" class="text-blue-400">0xbD02D9…2C19C8</a></li>
+          <li><span class="text-purple-400">T3 Hybrid</span> — <a href="https://testnet.arcscan.app/address/0x870924e38cD2dC2bf44697D35F818666D8897728" target="_blank" class="text-blue-400">0x870924…897728</a></li>
+          <li><span class="text-orange-400">T4 Recovery</span> — <a href="https://testnet.arcscan.app/address/0x30E419908FB7d8E752a400547839f9f8960DABDD" target="_blank" class="text-blue-400">0x30E419…DABDD</a></li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="bg-gray-800/20 rounded-lg p-4 border border-gray-700/30">
+      <h3 class="text-sm font-semibold text-gray-300 mb-2">ℹ️ About</h3>
+      <p class="text-xs text-gray-400 leading-relaxed">
+        This DApp demonstrates a complete post-quantum-ready smart account system on Arc Testnet, following Circle's PQ security roadmap. It features pluggable signature modules (ECDSA, hash-based, hybrid), 7-day timelocked migration, M-of-N social recovery, and an optional stealth-address privacy layer (ERC-5564 inspired). All contracts are verified on Blockscout. Built with Solidity + Foundry, frontend in vanilla HTML + ethers.js. Fully open source.
+      </p>
     </div>
   </div>
 </div>
