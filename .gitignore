@@ -1,0 +1,30 @@
+# Build artifacts
+out/
+cache/
+broadcast/
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Node
+node_modules/
+
+# IDE
+.vscode/
+.idea/
+
+# Build utility scripts (may contain API keys)
+ui_build/*.js
+ui_build/*.ps1
+ui_build/*.cmd
+!ui_build/vercel.json
+!ui_build/index.html
+!ui_build/abi/
+
+

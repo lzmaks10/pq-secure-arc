@@ -1,0 +1,741 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PQ-Ready Arc — Interactive DApp</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.2.0/crypto-js.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+*{font-family:'Inter',system-ui,sans-serif}
+body{background:#0a0a0f}
+.glow{box-shadow:0 0 20px rgba(59,130,246,0.1)}
+.card{background:linear-gradient(135deg,#1a1a2e 0%,#16213e 100%);border:1px solid rgba(59,130,246,0.15)}
+.hash{font-family:'Courier New',monospace;word-break:break-all;font-size:11px}
+pre{white-space:pre-wrap;word-break:break-all}
+.pulse{animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.5}}
+.bg-arc{background:linear-gradient(135deg,#0f1729,#1a1a3e)}
+.btn-primary{background:linear-gradient(135deg,#3b82f6,#6366f1);transition:all .2s}
+.btn-primary:hover{transform:translateY(-1px);box-shadow:0 4px 20px rgba(59,130,246,0.3)}
+.btn-primary:disabled{opacity:0.5;cursor:not-allowed;transform:none}
+.btn-danger{background:linear-gradient(135deg,#ef4444,#dc2626)}
+.btn-success{background:linear-gradient(135deg,#10b981,#059669)}
+.tab-btn{transition:all .2s;cursor:pointer}
+.tab-btn.active{border-bottom:2px solid #3b82f6;color:#60a5fa}
+.tab-btn:not(.active){color:#6b7280}
+.tab-btn:not(.active):hover{color:#9ca3af}
+.toast{position:fixed;bottom:20px;right:20px;z-index:100;transition:all .3s;max-width:400px}
+</style>
+</head>
+<body class="text-gray-100 min-h-screen">
+<div id="toast" class="toast hidden"></div>
+
+<div class="max-w-6xl mx-auto px-4 py-6">
+  <!-- Header -->
+  <div class="flex items-center justify-between mb-6 flex-wrap gap-4">
+    <div>
+      <h1 class="text-2xl font-bold bg-gradient-to-r from-blue-400 to-emerald-400 bg-clip-text text-transparent">
+        ⚛️ PQ-Ready Arc
+      </h1>
+      <p class="text-gray-500 text-xs mt-1">Interactive DApp · Arc Testnet (Chain 5042002)</p>
+    </div>
+    <div class="flex gap-3 items-center flex-wrap">
+      <span id="chainBadge" class="px-3 py-1.5 rounded-full text-xs font-medium bg-gray-800 text-gray-400 border border-gray-700">
+        ⚪ Not Connected
+      </span>
+      <button id="connectBtn" onclick="connectWallet()" class="px-5 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-lg text-sm font-medium hover:from-blue-500 hover:to-indigo-500 transition-all">
+        🔗 Connect MetaMask
+      </button>
+    </div>
+  </div>
+
+  <!-- Connection status bar -->
+  <div id="statusBar" class="text-xs text-gray-500 mb-4 hidden">
+    Wallet: <span id="walletAddr" class="hash text-blue-400"></span>
+    · Explorer: <a href="https://testnet.arcscan.app" target="_blank" class="text-blue-400 underline">testnet.arcscan.app</a>
+  </div>
+
+  <!-- Stats row -->
+  <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6" id="statsRow">
+    <div class="card rounded-xl p-4 glow"><div class="text-gray-400 text-xs uppercase tracking-wider">签名方案</div><div class="text-2xl font-bold mt-1">3</div><div class="text-xs text-gray-500 mt-1">ECDSA · Hash · Hybrid</div></div>
+    <div class="card rounded-xl p-4 glow"><div class="text-gray-400 text-xs uppercase tracking-wider">已部署账户</div><div class="text-2xl font-bold mt-1">5</div><div class="text-xs text-gray-500 mt-1">PQ-native + 迁移中</div></div>
+    <div class="card rounded-xl p-4 glow"><div class="text-gray-400 text-xs uppercase tracking-wider">合约验证</div><div class="text-2xl font-bold mt-1 text-emerald-400">✅ 全部</div><div class="text-xs text-gray-500 mt-1">Blockscout Verified</div></div>
+    <div class="card rounded-xl p-4 glow"><div class="text-gray-400 text-xs uppercase tracking-wider">网关</div><div class="text-2xl font-bold mt-1" id="liveStatus">⚪ 等待连接</div><div class="text-xs text-gray-500 mt-1">通过 MetaMask 交互</div></div>
+  </div>
+
+  <!-- Contract Addresses Bar -->
+  <div class="card rounded-xl p-4 glow mb-6">
+    <div class="flex flex-wrap gap-2 items-center">
+      <span class="text-xs text-gray-400 mr-2">📜</span>
+      <span class="text-xs text-gray-300">Modules:</span>
+      <a href="https://testnet.arcscan.app/address/0xbf2ba8ede210d184c10b4b4D3E183B0a7CD1F2E3" target="_blank" class="text-xs px-2 py-0.5 rounded bg-blue-900/30 text-blue-300 hover:bg-blue-900/50">ECDSA</a>
+      <a href="https://testnet.arcscan.app/address/0x388E0c1AB76A5A8C7C4567Dd8566496f96620aaE" target="_blank" class="text-xs px-2 py-0.5 rounded bg-emerald-900/30 text-emerald-300 hover:bg-emerald-900/50">Hash</a>
+      <a href="https://testnet.arcscan.app/address/0x48bB3b57561d913d36634e991501fD1C7a578186" target="_blank" class="text-xs px-2 py-0.5 rounded bg-purple-900/30 text-purple-300 hover:bg-purple-900/50">Hybrid</a>
+      <span class="text-gray-600 mx-1">|</span>
+      <span class="text-xs text-gray-300">Accounts:</span>
+      <a href="https://testnet.arcscan.app/address/0xbe98b7057476ccc007b7ba490440762c8587c416" target="_blank" class="text-xs px-2 py-0.5 rounded bg-emerald-900/30 text-emerald-300">T1 PQ</a>
+      <a href="https://testnet.arcscan.app/address/0xbd02d9b066ee4e4023a861d8fff7f881cd2c19c8" target="_blank" class="text-xs px-2 py-0.5 rounded bg-yellow-900/30 text-yellow-300">T2 迁移中</a>
+      <a href="https://testnet.arcscan.app/address/0x870924e38cd2dc2bf44697d35f818666d8897728" target="_blank" class="text-xs px-2 py-0.5 rounded bg-purple-900/30 text-purple-300">T3 Hybrid</a>
+      <a href="https://testnet.arcscan.app/address/0x30e419908fb7d8e752a400547839f9f8960dabdd" target="_blank" class="text-xs px-2 py-0.5 rounded bg-orange-900/30 text-orange-300">T4 Recovery</a>
+    </div>
+  </div>
+
+  <!-- Tabs -->
+  <div class="flex gap-6 border-b border-gray-800 mb-6 overflow-x-auto">
+    <button class="tab-btn active pb-2 text-sm font-medium" onclick="switchTab('explorer',this)">🔍 账户查询</button>
+    <button class="tab-btn pb-2 text-sm font-medium" onclick="switchTab('migration',this)">🔄 迁移</button>
+    <button class="tab-btn pb-2 text-sm font-medium" onclick="switchTab('recovery',this)">🛡️ 恢复</button>
+    <button class="tab-btn pb-2 text-sm font-medium" onclick="switchTab('register',this)">🗝️ 注册密钥</button>
+    <button class="tab-btn pb-2 text-sm font-medium" onclick="switchTab('pqdemo',this)">🧪 PQ 签名</button>
+  </div>
+
+  <!-- Tab: Explorer -->
+  <div id="tab-explorer" class="tab-content">
+    <div class="card rounded-xl p-6 glow mb-6">
+      <h2 class="text-lg font-semibold mb-4">🔍 链上账户查询</h2>
+      <div class="flex gap-3 mb-4">
+        <input id="explorerAddr" type="text" placeholder="输入账户地址..." class="flex-1 bg-gray-800/50 border border-gray-600/30 rounded-lg px-4 py-2 text-sm focus:outline-none focus:border-blue-500/50">
+        <button onclick="queryAccount()" class="btn-primary px-5 py-2 rounded-lg text-sm font-medium text-white">查询</button>
+      </div>
+      <div id="explorerResult" class="hidden">
+        <div class="grid md:grid-cols-2 gap-4">
+          <div class="bg-gray-800/30 rounded-lg p-4">
+            <div class="text-xs text-gray-400 mb-1">当前方案</div>
+            <div id="expScheme" class="text-sm font-medium text-blue-300">-</div>
+          </div>
+          <div class="bg-gray-800/30 rounded-lg p-4">
+            <div class="text-xs text-gray-400 mb-1">抗量子?</div>
+            <div id="expPq" class="text-sm font-medium">-</div>
+          </div>
+          <div class="bg-gray-800/30 rounded-lg p-4">
+            <div class="text-xs text-gray-400 mb-1">Nonce</div>
+            <div id="expNonce" class="text-sm font-medium text-purple-300">-</div>
+          </div>
+          <div class="bg-gray-800/30 rounded-lg p-4">
+            <div class="text-xs text-gray-400 mb-1">暂停状态</div>
+            <div id="expPaused" class="text-sm font-medium">-</div>
+          </div>
+        </div>
+        <div class="grid md:grid-cols-3 gap-4 mt-4">
+          <div class="bg-gray-800/30 rounded-lg p-4">
+            <div class="text-xs text-gray-400 mb-1">🔗 迁移管理器</div>
+            <div id="expMigrator" class="hash text-xs text-blue-300">-</div>
+          </div>
+          <div class="bg-gray-800/30 rounded-lg p-4">
+            <div class="text-xs text-gray-400 mb-1">🛡️ 恢复管理器</div>
+            <div id="expRecovery" class="hash text-xs text-blue-300">-</div>
+          </div>
+          <div class="bg-gray-800/30 rounded-lg p-4">
+            <div class="text-xs text-gray-400 mb-1">📊 迁移状态</div>
+            <div id="expMigStatus" class="text-xs">-</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card rounded-xl p-6 glow">
+      <h2 class="text-lg font-semibold mb-4">🏦 部署账户一览</h2>
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead><tr class="text-gray-400 border-b border-gray-700/50">
+            <th class="text-left pb-2 font-medium">标签</th><th class="text-left pb-2 font-medium">地址</th><th class="text-left pb-2 font-medium">方案</th><th class="text-left pb-2 font-medium">非ce</th><th class="text-left pb-2 font-medium">迁移</th>
+          </tr></thead>
+          <tbody id="accountsTableBody" class="text-gray-300">
+            <tr><td class="py-2">T1 PQ-Native</td><td class="py-2 hash text-xs"><a href="https://testnet.arcscan.app/address/0xbe98b7057476ccc007b7ba490440762c8587c416" target="_blank" class="text-blue-400">0xbE98b7…7C416</a></td><td id="l-t1-scheme" class="py-2">-</td><td id="l-t1-nonce" class="py-2">-</td><td id="l-t1-pq" class="py-2">-</td></tr>
+            <tr><td class="py-2">T2 迁移中</td><td class="py-2 hash text-xs"><a href="https://testnet.arcscan.app/address/0xbd02d9b066ee4e4023a861d8fff7f881cd2c19c8" target="_blank" class="text-blue-400">0xbD02D9…2C19C8</a></td><td id="l-t2-scheme" class="py-2">-</td><td id="l-t2-nonce" class="py-2">-</td><td id="l-t2-pq" class="py-2">-</td></tr>
+            <tr><td class="py-2">T3 Hybrid</td><td class="py-2 hash text-xs"><a href="https://testnet.arcscan.app/address/0x870924e38cd2dc2bf44697d35f818666d8897728" target="_blank" class="text-blue-400">0x870924…897728</a></td><td id="l-t3-scheme" class="py-2">-</td><td id="l-t3-nonce" class="py-2">-</td><td id="l-t3-pq" class="py-2">-</td></tr>
+            <tr><td class="py-2">Demo 迁移</td><td class="py-2 hash text-xs"><a href="https://testnet.arcscan.app/address/0x083beae6d9ca06c465dad123ce480e972153b881" target="_blank" class="text-blue-400">0x083bEa…B881</a></td><td id="l-demo-scheme" class="py-2">-</td><td id="l-demo-nonce" class="py-2">-</td><td id="l-demo-pq" class="py-2">-</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <button onclick="refreshAll()" class="mt-4 px-4 py-1.5 bg-gray-700/50 rounded-lg text-xs hover:bg-gray-700 transition-all">🔄 刷新全部</button>
+    </div>
+  </div>
+
+  <!-- Tab: Migration -->
+  <div id="tab-migration" class="tab-content hidden">
+    <div class="card rounded-xl p-6 glow mb-6">
+      <h2 class="text-lg font-semibold mb-4">🔄 迁移管理器</h2>
+      <p class="text-sm text-gray-400 mb-4">查看和触发账户签名方案迁移。最小 timelock: 7 天。</p>
+      <div class="flex gap-3 mb-4">
+        <input id="migMgrAddr" type="text" placeholder="MigrationManager 地址 (0x1f7b64...ff65 或 0x053159...Ea65)" class="flex-1 bg-gray-800/50 border border-gray-600/30 rounded-lg px-4 py-2 text-sm focus:outline-none focus:border-blue-500/50">
+        <input id="migAcctAddr" type="text" placeholder="对应账户地址 (可选)" class="flex-1 bg-gray-800/50 border border-gray-600/30 rounded-lg px-4 py-2 text-sm focus:outline-none focus:border-blue-500/50">
+        <button onclick="inspectMigration()" class="btn-primary px-4 py-2 rounded-lg text-sm font-medium text-white">检查</button>
+      </div>
+      <div id="migResult" class="hidden">
+        <div class="grid md:grid-cols-3 gap-4 mb-4">
+          <div class="bg-gray-800/30 rounded-lg p-3"><div class="text-xs text-gray-400">当前模块</div><div id="migCurrent" class="text-sm font-medium hash text-xs mt-1">-</div></div>
+          <div class="bg-gray-800/30 rounded-lg p-3"><div class="text-xs text-gray-400">待迁移模块</div><div id="migPending" class="text-sm font-medium hash text-xs mt-1">-</div></div>
+          <div class="bg-gray-800/30 rounded-lg p-3"><div class="text-xs text-gray-400">timelock 时间</div><div id="migTimestamp" class="text-sm font-medium mt-1">-</div></div>
+        </div>
+        <div class="grid md:grid-cols-6 gap-2">
+          <button onclick="executeMig()" class="btn-success px-3 py-2 rounded-lg text-xs font-medium text-white md:col-span-2">▶ 立即执行迁移</button>
+          <button onclick="cancelMig()" class="btn-danger px-3 py-2 rounded-lg text-xs font-medium text-white">✕ 取消迁移</button>
+          <button onclick="scheduleMig()" class="btn-primary px-3 py-2 rounded-lg text-xs font-medium text-white md:col-span-3">📅 排期迁移到 HashBased</button>
+        </div>
+      </div>
+    </div>
+    <div class="card rounded-xl p-6 glow">
+      <h2 class="text-lg font-semibold mb-4">⏱️ 迁移时间线</h2>
+      <div class="space-y-3">
+        <div class="flex items-center gap-3 p-3 bg-emerald-900/10 rounded-lg border border-emerald-700/20">
+          <span class="w-8 h-8 rounded-full bg-emerald-500/20 flex items-center justify-center text-emerald-400">✅</span>
+          <div><div class="text-sm font-medium">T1: PQ-Native</div><div class="text-xs text-gray-400">HashBasedModule 直接部署 · 已就绪</div></div>
+        </div>
+        <div class="flex items-center gap-3 p-3 bg-yellow-900/10 rounded-lg border border-yellow-700/20">
+          <span class="w-8 h-8 rounded-full bg-yellow-500/20 flex items-center justify-center text-yellow-400">⏳</span>
+          <div><div class="text-sm font-medium">T2: ECDSA → PQ</div><div class="text-xs text-gray-400">7 天 timelock 倒计时中 · <span id="migCountdown">-</span></div></div>
+        </div>
+        <div class="flex items-center gap-3 p-3 bg-purple-900/10 rounded-lg border border-purple-700/20">
+          <span class="w-8 h-8 rounded-full bg-purple-500/20 flex items-center justify-center text-purple-400">🔀</span>
+          <div><div class="text-sm font-medium">T3: Hybrid</div><div class="text-xs text-gray-400">ECDSA + HashBased 双签名 · 已就绪</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tab: Recovery -->
+  <div id="tab-recovery" class="tab-content hidden">
+    <div class="card rounded-xl p-6 glow mb-6">
+      <h2 class="text-lg font-semibold mb-4">🛡️ 社交恢复面板</h2>
+      <p class="text-sm text-gray-400 mb-4">密钥丢失？让守护者（Guardians）帮你恢复账户所有权。</p>
+      <div class="flex gap-3 mb-4">
+        <input id="rcvAddr" type="text" placeholder="RecoveryManager 地址 (0x30E419...DABDD)" class="flex-1 bg-gray-800/50 border border-gray-600/30 rounded-lg px-4 py-2 text-sm focus:outline-none focus:border-blue-500/50">
+        <button onclick="inspectRecovery()" class="btn-primary px-4 py-2 rounded-lg text-sm font-medium text-white">检查</button>
+      </div>
+      <div id="rcvResult" class="hidden">
+        <div class="grid md:grid-cols-4 gap-4 mb-4">
+          <div class="bg-gray-800/30 rounded-lg p-3"><div class="text-xs text-gray-400">Owner</div><div id="rcvOwner" class="hash text-xs mt-1">-</div></div>
+          <div class="bg-gray-800/30 rounded-lg p-3"><div class="text-xs text-gray-400">Guardians</div><div id="rcvGuardians" class="text-xs mt-1">-</div></div>
+          <div class="bg-gray-800/30 rounded-lg p-3"><div class="text-xs text-gray-400">所需票数</div><div id="rcvRequired" class="text-sm font-medium mt-1">-</div></div>
+          <div class="bg-gray-800/30 rounded-lg p-3"><div class="text-xs text-gray-400">挑战期</div><div id="rcvPeriod" class="text-sm font-medium mt-1">-</div></div>
+        </div>
+        <div class="grid md:grid-cols-3 gap-3 mt-4">
+          <button onclick="initiateRecovery()" class="btn-primary px-3 py-2 rounded-lg text-xs font-medium text-white">📢 发起恢复</button>
+          <button onclick="approveRecovery()" class="btn-success px-3 py-2 rounded-lg text-xs font-medium text-white">✅ 批准恢复</button>
+          <button onclick="executeRecovery()" class="btn-danger px-3 py-2 rounded-lg text-xs font-medium text-white">🚀 执行恢复</button>
+        </div>
+        <div class="mt-4 bg-gray-800/30 rounded-lg p-4" id="rcvStatusArea">
+          <div class="text-xs text-gray-400 mb-1">恢复状态</div>
+          <div id="rcvStatus" class="text-sm font-medium text-yellow-400">未发起</div>
+        </div>
+      </div>
+    </div>
+    <div class="card rounded-xl p-6 glow">
+      <h2 class="text-lg font-semibold mb-4">👥 现有 RecoveryManager 配置</h2>
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead><tr class="text-gray-400 border-b border-gray-700/50">
+            <th class="text-left pb-2 font-medium">地址</th><th class="text-left pb-2 font-medium">Guardians</th><th class="text-left pb-2 font-medium">阈值</th>
+          </tr></thead>
+          <tbody class="text-gray-300">
+            <tr><td class="py-2 hash text-xs"><a href="https://testnet.arcscan.app/address/0x30e419908fb7d8e752a400547839f9f8960dabdd" target="_blank" class="text-blue-400">T4: 0x30E419…DABDD</a></td><td class="py-2 text-xs">0x3333, 0x4444</td><td class="py-2">2/2</td></tr>
+            <tr><td class="py-2 hash text-xs"><a href="https://testnet.arcscan.app/address/0xce5ced0f5bf2de535e4b9b6fc56e0b1dfabd08e0" target="_blank" class="text-blue-400">Demo: 0xcE5cEd…08e0</a></td><td class="py-2 text-xs">0xFEED, 0xBEEF</td><td class="py-2">2/2</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tab: Register PQ Key -->
+  <div id="tab-register" class="tab-content hidden">
+    <div class="card rounded-xl p-6 glow mb-6">
+      <h2 class="text-lg font-semibold mb-4">🗝️ 注册抗量子密钥</h2>
+      <p class="text-sm text-gray-400 mb-4">为已有账户注册 Merkle 树根哈希，启用哈希签名方案。</p>
+      <div class="flex gap-3 mb-4">
+        <input id="regAccount" type="text" placeholder="PQAccount 地址" class="flex-1 bg-gray-800/50 border border-gray-600/30 rounded-lg px-4 py-2 text-sm focus:outline-none focus:border-blue-500/50">
+        <input id="regMerkleRoot" type="text" placeholder="Merkle Root (hex bytes32)" class="flex-1 bg-gray-800/50 border border-gray-600/30 rounded-lg px-4 py-2 text-sm focus:outline-none focus:border-blue-500/50">
+        <button onclick="registerPqKey()" class="btn-primary px-4 py-2 rounded-lg text-sm font-medium text-white whitespace-nowrap">注册</button>
+      </div>
+      <div id="regResult" class="hidden bg-gray-800/30 rounded-lg p-4">
+        <div id="regMsg" class="text-sm"></div>
+      </div>
+      <div class="mt-4 bg-gray-800/20 rounded-lg p-4">
+        <div class="text-xs text-gray-400 mb-2">💡 新 Merkle Root 生成器（客户端演示）</div>
+        <button onclick="generateNewRoot()" class="btn-primary px-4 py-1.5 rounded-lg text-xs font-medium text-white">🔄 生成新 Merkle Root</button>
+        <div id="genRootResult" class="mt-2 hash text-xs text-emerald-400 hidden"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tab: PQ Demo -->
+  <div id="tab-pqdemo" class="tab-content hidden">
+    <div class="card rounded-xl p-6 glow">
+      <h2 class="text-lg font-semibold mb-4">🧪 PQ 签名演示（客户端 Merkle 模拟）</h2>
+      <p class="text-sm text-gray-400 mb-4">输入消息并签名，模拟链上 HashBasedModule 的验证流程。</p>
+      <div class="flex gap-4 mb-6">
+        <input id="msgInput" type="text" placeholder="输入要签名的消息..." class="flex-1 bg-gray-800/50 border border-gray-600/30 rounded-lg px-4 py-2 text-sm focus:outline-none focus:border-blue-500/50">
+        <button onclick="demoSign()" class="btn-primary px-6 py-2 rounded-lg text-sm font-medium text-white">签名 & 验证</button>
+      </div>
+      <div id="sigResult" class="hidden">
+        <div class="grid md:grid-cols-2 gap-4">
+          <div class="bg-gray-800/30 rounded-lg p-4"><div class="text-xs text-gray-400 mb-1">📝 消息摘要</div><div class="hash text-xs" id="sigDigest">-</div></div>
+          <div class="bg-gray-800/30 rounded-lg p-4"><div class="text-xs text-gray-400 mb-1">🔑 OTS 公钥 (leafPubKey)</div><div class="hash text-xs" id="sigLeafPub">-</div></div>
+          <div class="bg-gray-800/30 rounded-lg p-4"><div class="text-xs text-gray-400 mb-1">📬 签名组件</div><div class="hash text-xs" id="sigComponent">-</div></div>
+          <div class="bg-gray-800/30 rounded-lg p-4 border border-emerald-700/30">
+            <div class="text-xs text-emerald-400 mb-1">✅ 验证结果</div>
+            <div id="sigResultText" class="text-lg font-bold">⏳</div>
+          </div>
+        </div>
+        <div class="mt-4 bg-gray-800/30 rounded-lg p-4">
+          <div class="text-xs text-gray-400 mb-1">🌲 Merkle 证明路径</div>
+          <div class="hash text-xs" id="sigProof">-</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ============================================================
+// Configuration
+// ============================================================
+const ARC_CHAIN = { chainId: 5042002, name: 'Arc Testnet', rpc: 'https://rpc.testnet.arc.network' };
+const RPC_URL = 'https://rpc.testnet.arc.network';
+
+const CONTRACTS = {
+  ecdsa:    '0xbf2ba8ede210d184c10b4b4D3E183B0a7CD1F2E3',
+  hash:     '0x388E0c1AB76A5A8C7C4567Dd8566496f96620aaE',
+  hybrid:   '0x48bB3b57561d913d36634e991501fD1C7a578186',
+  t1:       '0xbE98b7057476cCc007b7bA490440762C8587C416',
+  t2:       '0xbD02D9b066eE4E4023A861D8fff7F881cD2C19C8',
+  t3:       '0x870924e38cD2dC2bf44697D35F818666D8897728',
+  t4rcv:    '0x30E419908FB7d8E752a400547839f9f8960DABDD',
+  t2mig:    '0x053159aB0dcE6420d052E4D5785f45075401Ea65',
+  demo:     '0x083bEaE6d9Ca06c465dAd123ce480E972153B881',
+  demomig:  '0x1f7b64C0EA79B235dC81D346BD089c02d900ff65',
+  demorcv:  '0xcE5cEd0F5bF2de535e4B9b6FC56e0B1dfAbd08e0',
+};
+
+// ABIs — minified from forge artifacts
+const ABI_PQACCOUNT = [{"type":"constructor","inputs":[{"name":"_migrationManager","type":"address","internalType":"address"},{"name":"_recoveryManager","type":"address","internalType":"address"}],"stateMutability":"nonpayable"},{"type":"receive","stateMutability":"payable"},{"type":"function","name":"MAX_MODULE_GAS","inputs":[],"outputs":[{"name":"","type":"uint256","internalType":"uint256"}],"stateMutability":"view"},{"type":"function","name":"currentScheme","inputs":[],"outputs":[{"name":"","type":"string","internalType":"string"}],"stateMutability":"view"},{"type":"function","name":"execute","inputs":[{"name":"target","type":"address","internalType":"address"},{"name":"value","type":"uint256","internalType":"uint256"},{"name":"data","type":"bytes","internalType":"bytes"}],"outputs":[{"name":"result","type":"bytes","internalType":"bytes"}],"stateMutability":"nonpayable"},{"type":"function","name":"isCurrentSchemeQuantumResistant","inputs":[],"outputs":[{"name":"","type":"bool","internalType":"bool"}],"stateMutability":"view"},{"type":"function","name":"migrationManager","inputs":[],"outputs":[{"name":"","type":"address","internalType":"contract MigrationManager"}],"stateMutability":"view"},{"type":"function","name":"nonce","inputs":[],"outputs":[{"name":"","type":"uint256","internalType":"uint256"}],"stateMutability":"view"},{"type":"function","name":"pause","inputs":[],"outputs":[],"stateMutability":"nonpayable"},{"type":"function","name":"paused","inputs":[],"outputs":[{"name":"","type":"bool","internalType":"bool"}],"stateMutability":"view"},{"type":"function","name":"recoveryManager","inputs":[],"outputs":[{"name":"","type":"address","internalType":"address"}],"stateMutability":"view"},{"type":"function","name":"registerPqKey","inputs":[{"name":"data","type":"bytes","internalType":"bytes"}],"outputs":[],"stateMutability":"nonpayable"},{"type":"function","name":"unpause","inputs":[],"outputs":[],"stateMutability":"nonpayable"},{"type":"function","name":"verifyAndExecute","inputs":[{"name":"target","type":"address","internalType":"address"},{"name":"value","type":"uint256","internalType":"uint256"},{"name":"data","type":"bytes","internalType":"bytes"},{"name":"signature","type":"bytes","internalType":"bytes"}],"outputs":[{"name":"result","type":"bytes","internalType":"bytes"}],"stateMutability":"nonpayable"},{"type":"event","name":"Executed","inputs":[{"name":"target","type":"address","indexed":true,"internalType":"address"},{"name":"value","type":"uint256","indexed":false,"internalType":"uint256"},{"name":"data","type":"bytes","indexed":false,"internalType":"bytes"},{"name":"result","type":"bytes","indexed":false,"internalType":"bytes"}],"anonymous":false},{"type":"event","name":"NonceIncremented","inputs":[{"name":"newNonce","type":"uint256","indexed":false,"internalType":"uint256"}],"anonymous":false},{"type":"event","name":"Paused","inputs":[{"name":"paused","type":"bool","indexed":false,"internalType":"bool"}],"anonymous":false}];
+const ABI_MIGRATION = [{"type":"constructor","inputs":[{"name":"_initialModule","type":"address","internalType":"address"},{"name":"_owner","type":"address","internalType":"address"}],"stateMutability":"nonpayable"},{"type":"function","name":"MAX_MIGRATION_DELAY","inputs":[],"outputs":[{"name":"","type":"uint256","internalType":"uint256"}],"stateMutability":"view"},{"type":"function","name":"MIN_MIGRATION_DELAY","inputs":[],"outputs":[{"name":"","type":"uint256","internalType":"uint256"}],"stateMutability":"view"},{"type":"function","name":"acceptOwnership","inputs":[],"outputs":[],"stateMutability":"nonpayable"},{"type":"function","name":"activeModule","inputs":[],"outputs":[{"name":"","type":"address","internalType":"contract ISignatureModule"}],"stateMutability":"view"},{"type":"function","name":"cancelMigration","inputs":[],"outputs":[],"stateMutability":"nonpayable"},{"type":"function","name":"executeMigration","inputs":[],"outputs":[],"stateMutability":"nonpayable"},{"type":"function","name":"getMigrationStatus","inputs":[],"outputs":[{"name":"pendingModule","type":"address","internalType":"address"},{"name":"executableAt","type":"uint256","internalType":"uint256"}],"stateMutability":"view"},{"type":"function","name":"migrationTimestamp","inputs":[],"outputs":[{"name":"","type":"uint256","internalType":"uint256"}],"stateMutability":"view"},{"type":"function","name":"owner","inputs":[],"outputs":[{"name":"","type":"address","internalType":"address"}],"stateMutability":"view"},{"type":"function","name":"pendingModule","inputs":[],"outputs":[{"name":"","type":"address","internalType":"contract ISignatureModule"}],"stateMutability":"view"},{"type":"function","name":"pendingOwner","inputs":[],"outputs":[{"name":"","type":"address","internalType":"address"}],"stateMutability":"view"},{"type":"function","name":"scheduleMigration","inputs":[{"name":"_module","type":"address","internalType":"address"},{"name":"_delay","type":"uint256","internalType":"uint256"}],"outputs":[],"stateMutability":"nonpayable"},{"type":"function","name":"transferOwnership","inputs":[{"name":"newOwner","type":"address","internalType":"address"}],"outputs":[],"stateMutability":"nonpayable"},{"type":"event","name":"MigrationCancelled","inputs":[{"name":"cancelledModule","type":"address","indexed":true,"internalType":"address"}],"anonymous":false},{"type":"event","name":"MigrationScheduled","inputs":[{"name":"newModule","type":"address","indexed":true,"internalType":"address"},{"name":"executableAt","type":"uint256","indexed":false,"internalType":"uint256"}],"anonymous":false},{"type":"event","name":"ModuleChanged","inputs":[{"name":"oldModule","type":"address","indexed":false,"internalType":"address"},{"name":"newModule","type":"address","indexed":false,"internalType":"address"}],"anonymous":false},{"type":"event","name":"OwnershipTransferStarted","inputs":[{"name":"previousOwner","type":"address","indexed":false,"internalType":"address"},{"name":"newOwner","type":"address","indexed":false,"internalType":"address"}],"anonymous":false},{"type":"event","name":"OwnershipTransferred","inputs":[{"name":"previousOwner","type":"address","indexed":false,"internalType":"address"},{"name":"newOwner","type":"address","indexed":false,"internalType":"address"}],"anonymous":false}];
+const ABI_RECOVERY = [{"type":"constructor","inputs":[{"name":"_owner","type":"address","internalType":"address"},{"name":"_migrationManager","type":"address","internalType":"address"},{"name":"_guardians","type":"address[]","internalType":"address[]"},{"name":"_requiredGuardians","type":"uint256","internalType":"uint256"},{"name":"_challengePeriod","type":"uint256","internalType":"uint256"}],"stateMutability":"nonpayable"},{"type":"function","name":"MAX_CHALLENGE_PERIOD","inputs":[],"outputs":[{"name":"","type":"uint256","internalType":"uint256"}],"stateMutability":"view"},{"type":"function","name":"MAX_GUARDIANS","inputs":[],"outputs":[{"name":"","type":"uint256","internalType":"uint256"}],"stateMutability":"view"},{"type":"function","name":"MIN_CHALLENGE_PERIOD","inputs":[],"outputs":[{"name":"","type":"uint256","internalType":"uint256"}],"stateMutability":"view"},{"type":"function","name":"MIN_GUARDIANS","inputs":[],"outputs":[{"name":"","type":"uint256","internalType":"uint256"}],"stateMutability":"view"},{"type":"function","name":"addGuardian","inputs":[{"name":"guardian","type":"address","internalType":"address"}],"outputs":[],"stateMutability":"nonpayable"},{"type":"function","name":"approveRecovery","inputs":[],"outputs":[],"stateMutability":"nonpayable"},{"type":"function","name":"cancelRecovery","inputs":[],"outputs":[],"stateMutability":"nonpayable"},{"type":"function","name":"challengePeriod","inputs":[],"outputs":[{"name":"","type":"uint256","internalType":"uint256"}],"stateMutability":"view"},{"type":"function","name":"executeRecovery","inputs":[],"outputs":[],"stateMutability":"nonpayable"},{"type":"function","name":"getGuardians","inputs":[],"outputs":[{"name":"","type":"address[]","internalType":"address[]"}],"stateMutability":"view"},{"type":"function","name":"guardians","inputs":[{"name":"","type":"uint256","internalType":"uint256"}],"outputs":[{"name":"","type":"address","internalType":"address"}],"stateMutability":"view"},{"type":"function","name":"initiateRecovery","inputs":[{"name":"_newOwner","type":"address","internalType":"address"},{"name":"_migrationTarget","type":"address","internalType":"address"}],"outputs":[],"stateMutability":"nonpayable"},{"type":"function","name":"isGuardian","inputs":[{"name":"guardian","type":"address","internalType":"address"}],"outputs":[{"name":"","type":"bool","internalType":"bool"}],"stateMutability":"view"},{"type":"function","name":"migrationManager","inputs":[],"outputs":[{"name":"","type":"address","internalType":"contract MigrationManagerLike"}],"stateMutability":"view"},{"type":"function","name":"owner","inputs":[],"outputs":[{"name":"","type":"address","internalType":"address"}],"stateMutability":"view"},{"type":"function","name":"removeGuardian","inputs":[{"name":"guardian","type":"address","internalType":"address"}],"outputs":[],"stateMutability":"nonpayable"},{"type":"function","name":"requiredGuardians","inputs":[],"outputs":[{"name":"","type":"uint256","internalType":"uint256"}],"stateMutability":"view"},{"type":"event","name":"GuardianAdded","inputs":[{"name":"guardian","type":"address","indexed":true,"internalType":"address"}],"anonymous":false},{"type":"event","name":"GuardianRemoved","inputs":[{"name":"guardian","type":"address","indexed":true,"internalType":"address"}],"anonymous":false},{"type":"event","name":"RecoveryApproved","inputs":[{"name":"approver","type":"address","indexed":true,"internalType":"address"}],"anonymous":false},{"type":"event","name":"RecoveryCancelled","inputs":[{"name":"reason","type":"string","indexed":false,"internalType":"string"}],"anonymous":false},{"type":"event","name":"RecoveryExecuted","inputs":[{"name":"oldOwner","type":"address","indexed":true,"internalType":"address"},{"name":"newOwner","type":"address","indexed":true,"internalType":"address"}],"anonymous":false},{"type":"event","name":"RecoveryInitiated","inputs":[{"name":"initiator","type":"address","indexed":true,"internalType":"address"},{"name":"newOwner","type":"address","indexed":true,"internalType":"address"},{"name":"deadline","type":"uint256","indexed":false,"internalType":"uint256"}],"anonymous":false}];
+const ABI_HASHMODULE = [{"type":"function","name":"HASH_SIZE","inputs":[],"outputs":[{"name":"","type":"uint256","internalType":"uint256"}],"stateMutability":"view"},{"type":"function","name":"MAX_LEAVES","inputs":[],"outputs":[{"name":"","type":"uint256","internalType":"uint256"}],"stateMutability":"view"},{"type":"function","name":"TREE_HEIGHT","inputs":[],"outputs":[{"name":"","type":"uint256","internalType":"uint256"}],"stateMutability":"view"},{"type":"function","name":"isQuantumResistant","inputs":[],"outputs":[{"name":"","type":"bool","internalType":"bool"}],"stateMutability":"pure"},{"type":"function","name":"merkleRoots","inputs":[{"name":"","type":"address","internalType":"address"}],"outputs":[{"name":"","type":"bytes32","internalType":"bytes32"}],"stateMutability":"view"},{"type":"function","name":"revokeMerkleRoot","inputs":[],"outputs":[],"stateMutability":"nonpayable"},{"type":"function","name":"schemeName","inputs":[],"outputs":[{"name":"","type":"string","internalType":"string"}],"stateMutability":"pure"},{"type":"function","name":"setMerkleRoot","inputs":[{"name":"root","type":"bytes32","internalType":"bytes32"}],"outputs":[],"stateMutability":"nonpayable"},{"type":"function","name":"usedLeaves","inputs":[{"name":"","type":"address","internalType":"address"},{"name":"","type":"uint256","internalType":"uint256"}],"outputs":[{"name":"","type":"bool","internalType":"bool"}],"stateMutability":"view"},{"type":"function","name":"verify","inputs":[{"name":"signer","type":"address","internalType":"address"},{"name":"digest","type":"bytes32","internalType":"bytes32"},{"name":"signature","type":"bytes","internalType":"bytes"}],"outputs":[{"name":"","type":"bool","internalType":"bool"}],"stateMutability":"view"},{"type":"event","name":"MerkleRootRevoked","inputs":[{"name":"account","type":"address","indexed":true,"internalType":"address"}],"anonymous":false},{"type":"event","name":"MerkleRootSet","inputs":[{"name":"account","type":"address","indexed":true,"internalType":"address"},{"name":"root","type":"bytes32","indexed":false,"internalType":"bytes32"}],"anonymous":false}];
+const ABI_HYBRID = [{"type":"constructor","inputs":[{"name":"_ecdsaModule","type":"address","internalType":"contract ISignatureModule"},{"name":"_hashModule","type":"address","internalType":"contract ISignatureModule"}],"stateMutability":"nonpayable"},{"type":"function","name":"isQuantumResistant","inputs":[],"outputs":[{"name":"","type":"bool","internalType":"bool"}],"stateMutability":"view"},{"type":"function","name":"schemeName","inputs":[],"outputs":[{"name":"","type":"string","internalType":"string"}],"stateMutability":"view"},{"type":"function","name":"verify","inputs":[{"name":"signer","type":"address","internalType":"address"},{"name":"digest","type":"bytes32","internalType":"bytes32"},{"name":"signature","type":"bytes","internalType":"bytes"}],"outputs":[{"name":"","type":"bool","internalType":"bool"}],"stateMutability":"view"},{"type":"event","name":"SignatureVerified","inputs":[{"name":"signer","type":"address","indexed":true,"internalType":"address"},{"name":"digest","type":"bytes32","indexed":false,"internalType":"bytes32"},{"name":"ecdsaValid","type":"bool","indexed":false,"internalType":"bool"},{"name":"hashValid","type":"bool","indexed":false,"internalType":"bool"}],"anonymous":false}];
+
+// ============================================================
+// Wallet / Provider
+// ============================================================
+let provider, signer, userAddr;
+
+async function ensureSigner() {
+  if (!signer) throw new Error('请先连接钱包');
+  return signer;
+}
+
+function addr(a) { return ethers.utils.getAddress ? ethers.utils.getAddress(a.toLowerCase()) : a; }
+
+function toast(msg, type='info') {
+  const el = document.getElementById('toast');
+  const colors = {info:'bg-blue-900/90 border-blue-700', success:'bg-emerald-900/90 border-emerald-700', error:'bg-red-900/90 border-red-700'};
+  el.className = `toast ${colors[type]||colors.info} border rounded-lg p-3 text-sm`;
+  el.innerHTML = msg;
+  el.classList.remove('hidden');
+  setTimeout(()=>el.classList.add('hidden'), 5000);
+}
+
+function showLoading(id, msg) {
+  const el = document.getElementById(id);
+  if (el) el.innerHTML = `<span class="text-yellow-400 pulse">⏳ ${msg}</span>`;
+}
+
+// ============================================================
+// Wallet Connect
+// ============================================================
+async function connectWallet() {
+  try {
+    if (!window.ethereum) { toast('请安装 MetaMask! 🦊', 'error'); return; }
+    provider = new ethers.providers.Web3Provider(window.ethereum);
+    await provider.send('eth_requestAccounts', []);
+    signer = provider.getSigner();
+    userAddr = await signer.getAddress();
+    const net = await provider.getNetwork();
+    
+    document.getElementById('connectBtn').textContent = `✅ ${userAddr.slice(0,6)}...${userAddr.slice(-4)}`;
+    document.getElementById('connectBtn').onclick = null;
+    document.getElementById('statusBar').classList.remove('hidden');
+    document.getElementById('walletAddr').textContent = userAddr;
+    
+    if (net.chainId !== 5042002) {
+      document.getElementById('chainBadge').innerHTML = '⚠️ 请切换到 Arc Testnet';
+      try {
+        await window.ethereum.request({
+          method: 'wallet_switchEthereumChain',
+          params: [{ chainId: '0x4CEF52' }],
+        });
+      } catch(e) {
+        if (e.code === 4902) {
+          await window.ethereum.request({
+            method: 'wallet_addEthereumChain',
+            params: [{ chainId: '0x4CEF52', chainName: 'Arc Testnet', rpcUrls: ['https://rpc.testnet.arc.network'], nativeCurrency: { name: 'USDC', symbol: 'USDC', decimals: 18 } }],
+          });
+        }
+      }
+    } else {
+      document.getElementById('chainBadge').innerHTML = '🟢 Arc Testnet';
+    }
+    document.getElementById('liveStatus').innerHTML = '🟢 已连接';
+    document.getElementById('liveStatus').className = 'text-2xl font-bold mt-1 text-emerald-400';
+    toast('✅ 钱包已连接', 'success');
+    setTimeout(refreshAll, 500);
+  } catch(e) {
+    toast('连接失败: '+e.message, 'error');
+  }
+}
+
+// ============================================================
+// Tab switching
+// ============================================================
+function switchTab(name, btn) {
+  document.querySelectorAll('.tab-content').forEach(t=>t.classList.add('hidden'));
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('tab-'+name).classList.remove('hidden');
+  btn.classList.add('active');
+}
+
+// ============================================================
+// Account Explorer
+// ============================================================
+function getContract(addr, abi) {
+  return new ethers.Contract(addr(addr), abi, provider || new ethers.providers.JsonRpcProvider(RPC_URL));
+}
+
+function getSignerContract(addr, abi) {
+  return new ethers.Contract(addr(addr), abi, signer);
+}
+
+async function queryAccount() {
+  const acct = document.getElementById('explorerAddr').value.trim();
+  if (!acct) { toast('请输入账户地址', 'error'); return; }
+  showLoading('expScheme', '查询中...');
+  document.getElementById('explorerResult').classList.remove('hidden');
+  try {
+    const c = getContract(acct, ABI_PQACCOUNT);
+    const [scheme, pq, nonce, paused, mig, rcv] = await Promise.all([
+      c.currentScheme(), c.isCurrentSchemeQuantumResistant(), c.nonce(), c.paused(), c.migrationManager(), c.recoveryManager()
+    ]);
+    document.getElementById('expScheme').textContent = scheme;
+    document.getElementById('expScheme').className = pq ? 'text-sm font-medium text-emerald-300' : 'text-sm font-medium text-yellow-300';
+    document.getElementById('expPq').textContent = pq ? '✅ 是' : '❌ 否';
+    document.getElementById('expPq').className = pq ? 'text-sm font-medium text-emerald-400' : 'text-sm font-medium text-red-400';
+    document.getElementById('expNonce').textContent = nonce.toString();
+    document.getElementById('expPaused').textContent = paused ? '🚫 已暂停' : '✅ 活跃';
+    document.getElementById('expPaused').className = paused ? 'text-sm font-medium text-red-400' : 'text-sm font-medium text-emerald-400';
+    document.getElementById('expMigrator').textContent = mig;
+    document.getElementById('expRecovery').textContent = rcv;
+    // check migration status
+    try {
+      const mc = getContract(mig, ABI_MIGRATION);
+      const [pm, et] = await mc.getMigrationStatus();
+      if (pm === '0x0000000000000000000000000000000000000000') {
+        document.getElementById('expMigStatus').textContent = '无待处理迁移';
+      } else {
+        const now = Math.floor(Date.now()/1000);
+        const wait = et.gt(now) ? `${Math.ceil((et-now)/86400)} 天 ${Math.ceil(((et-now)%86400)/3600)} 小时` : '可执行!';
+        document.getElementById('expMigStatus').innerHTML = `<span class="text-yellow-400">→ ${pm.slice(0,10)}... 可执行: ${wait}</span>`;
+      }
+    } catch(e) {
+      document.getElementById('expMigStatus').textContent = '无法读取迁移状态';
+    }
+    toast('✅ 查询成功', 'success');
+  } catch(e) {
+    document.getElementById('expScheme').textContent = '❌ 错误: '+e.message.slice(0,60);
+    toast('查询失败: '+e.message.slice(0,60), 'error');
+  }
+}
+
+async function refreshAll() {
+  const accounts = [
+    {id:'t1', addr:'0xbE98b7057476cCc007b7bA490440762C8587C416'},
+    {id:'t2', addr:'0xbD02D9b066eE4E4023A861D8fff7F881cD2C19C8'},
+    {id:'t3', addr:'0x870924e38cD2dC2bf44697D35F818666D8897728'},
+    {id:'demo', addr:'0x083bEaE6d9Ca06c465dAd123ce480E972153B881'},
+  ];
+  for (const a of accounts) {
+    try {
+      const c = getContract(a.addr, ABI_PQACCOUNT);
+      const [s, n] = await Promise.all([c.currentScheme(), c.nonce()]);
+      document.getElementById(`l-${a.id}-scheme`).textContent = s.length > 20 ? s.slice(0,20)+'...' : s;
+      document.getElementById(`l-${a.id}-nonce`).textContent = n.toString();
+      document.getElementById(`l-${a.id}-pq`).textContent = '?';
+      try {
+        const pq = await c.isCurrentSchemeQuantumResistant();
+        document.getElementById(`l-${a.id}-pq`).textContent = pq ? '⚛️ PQ' : '🔒';
+        document.getElementById(`l-${a.id}-pq`).className = pq ? 'py-2 text-emerald-400' : 'py-2 text-yellow-400';
+      } catch(e) {}
+    } catch(e) {}
+  }
+  // Check T2 migration countdown
+  try {
+    const mc = getContract('0x053159aB0dcE6420d052E4D5785f45075401Ea65', ABI_MIGRATION);
+    const [pm, et] = await mc.getMigrationStatus();
+    const now = Math.floor(Date.now()/1000);
+    if (pm !== '0x0000000000000000000000000000000000000000') {
+      const secs = Math.max(0, et.toNumber() - now);
+      const d = Math.floor(secs/86400), h = Math.floor((secs%86400)/3600), m = Math.floor((secs%3600)/60);
+      document.getElementById('migCountdown').textContent = `${d}d ${h}h ${m}m`;
+    } else {
+      document.getElementById('migCountdown').textContent = '已迁移!';
+    }
+  } catch(e) {
+    document.getElementById('migCountdown').textContent = 'N/A';
+  }
+  toast('✅ 已刷新', 'success');
+}
+
+// ============================================================
+// Migration Panel
+// ============================================================
+async function inspectMigration() {
+  const addr = document.getElementById('migMgrAddr').value.trim();
+  if (!addr) { toast('请输入 MigrationManager 地址', 'error'); return; }
+  document.getElementById('migResult').classList.remove('hidden');
+  showLoading('migCurrent', '查询中...');
+  try {
+    const mc = getContract(addr, ABI_MIGRATION);
+    const [cur, pend, ts] = await Promise.all([mc.activeModule(), mc.pendingModule(), mc.migrationTimestamp()]);
+    document.getElementById('migCurrent').textContent = cur;
+    document.getElementById('migPending').textContent = pend === '0x0000000000000000000000000000000000000000' ? '无' : pend;
+    const now = Math.floor(Date.now()/1000);
+    if (ts.toString() === '0') {
+      document.getElementById('migTimestamp').textContent = '未排期';
+    } else {
+      const d = Math.max(0, ts.toNumber() - now);
+      document.getElementById('migTimestamp').textContent = `${Math.floor(d/86400)}d ${Math.floor((d%86400)/3600)}h ${Math.floor((d%3600)/60)}m`;
+    }
+    toast('✅ 迁移状态已获取', 'success');
+  } catch(e) {
+    document.getElementById('migCurrent').textContent = '错误: '+e.message.slice(0,50);
+    toast('查询失败', 'error');
+  }
+}
+
+async function executeMig() {
+  const addr = document.getElementById('migMgrAddr').value.trim();
+  if (!addr) { toast('请输入地址', 'error'); return; }
+  try {
+    const s = await ensureSigner();
+    const mc = getSignerContract(addr, ABI_MIGRATION);
+    const tx = await mc.executeMigration();
+    toast(`⏳ 迁移交易已发送: ${tx.hash.slice(0,10)}...`, 'info');
+    const r = await tx.wait();
+    toast(`✅ 迁移成功! 区块: ${r.blockNumber}`, 'success');
+  } catch(e) { toast('迁移失败: '+e.message.slice(0,80), 'error'); }
+}
+
+async function cancelMig() {
+  const addr = document.getElementById('migMgrAddr').value.trim();
+  if (!addr) { toast('请输入地址', 'error'); return; }
+  try {
+    const s = await ensureSigner();
+    const mc = getSignerContract(addr, ABI_MIGRATION);
+    const tx = await mc.cancelMigration();
+    toast(`⏳ 发送取消交易...`, 'info');
+    await tx.wait();
+    toast('✅ 迁移已取消', 'success');
+  } catch(e) { toast('取消失败: '+e.message.slice(0,80), 'error'); }
+}
+
+async function scheduleMig() {
+  const addr = document.getElementById('migMgrAddr').value.trim();
+  if (!addr) { toast('请输入地址', 'error'); return; }
+  try {
+    const s = await ensureSigner();
+    const mc = getSignerContract(addr, ABI_MIGRATION);
+    const delay = 7 * 86400;
+    const tx = await mc.scheduleMigration(CONTRACTS.hash, delay);
+    toast(`⏳ 排期交易已发送...`, 'info');
+    await tx.wait();
+    toast('✅ 迁移已排期！7天后可执行', 'success');
+  } catch(e) { toast('排期失败: '+e.message.slice(0,80), 'error'); }
+}
+
+// ============================================================
+// Recovery Panel
+// ============================================================
+async function inspectRecovery() {
+  const a = document.getElementById('rcvAddr').value.trim();
+  if (!a) { toast('请输入 RecoveryManager 地址', 'error'); return; }
+  document.getElementById('rcvResult').classList.remove('hidden');
+  showLoading('rcvOwner', '查询中...');
+  try {
+    const c = getContract(a, ABI_RECOVERY);
+    const [owner, guardians, required, period] = await Promise.all([
+      c.owner(), c.getGuardians(), c.requiredGuardians(), c.challengePeriod()
+    ]);
+    document.getElementById('rcvOwner').textContent = owner;
+    document.getElementById('rcvGuardians').textContent = guardians.map(g=>g.slice(0,10)).join(', ');
+    document.getElementById('rcvRequired').textContent = `${required.toString()} / ${guardians.length}`;
+    document.getElementById('rcvPeriod').textContent = `${period.toString()} 秒 (${Math.floor(period/86400)}天)`;
+    toast('✅ 恢复配置已获取', 'success');
+  } catch(e) {
+    document.getElementById('rcvOwner').textContent = '错误';
+    toast('查询失败', 'error');
+  }
+}
+
+async function initiateRecovery() {
+  const a = document.getElementById('rcvAddr').value.trim();
+  if (!a) { toast('请输入地址', 'error'); return; }
+  const newOwner = prompt('输入新 Owner 地址:');
+  if (!newOwner) return;
+  try {
+    const s = await ensureSigner();
+    const c = getSignerContract(a, ABI_RECOVERY);
+    const tx = await c.initiateRecovery(newOwner, '0x0000000000000000000000000000000000000000');
+    toast(`⏳ 发起恢复... ${tx.hash.slice(0,10)}...`, 'info');
+    await tx.wait();
+    toast('✅ 恢复已发起！等待守护者批准', 'success');
+  } catch(e) { toast('发起失败: '+e.message.slice(0,80), 'error'); }
+}
+
+async function approveRecovery() {
+  const a = document.getElementById('rcvAddr').value.trim();
+  if (!a) { toast('请输入地址', 'error'); return; }
+  try {
+    const s = await ensureSigner();
+    const c = getSignerContract(a, ABI_RECOVERY);
+    const tx = await c.approveRecovery();
+    toast(`⏳ 批准恢复...`, 'info');
+    await tx.wait();
+    toast('✅ 已批准！达到阈值后可执行', 'success');
+  } catch(e) { toast('批准失败: '+e.message.slice(0,80), 'error'); }
+}
+
+async function executeRecovery() {
+  const a = document.getElementById('rcvAddr').value.trim();
+  if (!a) { toast('请输入地址', 'error'); return; }
+  try {
+    const s = await ensureSigner();
+    const c = getSignerContract(a, ABI_RECOVERY);
+    const tx = await c.executeRecovery();
+    toast(`⏳ 执行恢复...`, 'info');
+    await tx.wait();
+    toast('✅ 恢复已执行！新 Owner 生效', 'success');
+  } catch(e) { toast('执行失败: '+e.message.slice(0,80), 'error'); }
+}
+
+// ============================================================
+// Register PQ Key
+// ============================================================
+async function registerPqKey() {
+  const acct = document.getElementById('regAccount').value.trim();
+  const root = document.getElementById('regMerkleRoot').value.trim();
+  if (!acct || !root) { toast('请输入账户地址和 Merkle Root', 'error'); return; }
+  document.getElementById('regResult').classList.remove('hidden');
+  document.getElementById('regMsg').innerHTML = '<span class="text-yellow-400 pulse">⏳ 发送交易...</span>';
+  try {
+    const s = await ensureSigner();
+    const c = getSignerContract(acct, ABI_PQACCOUNT);
+    const tx = await c.registerPqKey(root);
+    document.getElementById('regMsg').innerHTML = `<span class="text-yellow-400">⏳ 交易: ${tx.hash.slice(0,10)}...</span>`;
+    await tx.wait();
+    document.getElementById('regMsg').innerHTML = '<span class="text-emerald-400">✅ PQ 密钥注册成功！</span>';
+    toast('✅ 密钥注册成功', 'success');
+  } catch(e) {
+    document.getElementById('regMsg').innerHTML = `<span class="text-red-400">❌ 失败: ${e.message.slice(0,80)}</span>`;
+    toast('注册失败', 'error');
+  }
+}
+
+const SIMULATED_ROOT = '0x' + 'a'.repeat(64);
+
+function generateNewRoot() {
+  const root = '0x' + Array.from({length:32},()=>Math.floor(Math.random()*16).toString(16)).join('');
+  document.getElementById('regMerkleRoot').value = root;
+  document.getElementById('genRootResult').classList.remove('hidden');
+  document.getElementById('genRootResult').textContent = root;
+  toast('✅ 已生成新 Merkle Root', 'success');
+}
+
+// ============================================================
+// PQ Demo (client-side Merkle)
+// ============================================================
+const NUM_LEAVES = 256, TREE_HEIGHT = 8;
+function keccak256(m) { return CryptoJS.SHA3(m, {outputLength:256}).toString(CryptoJS.enc.Hex); }
+
+function genDemoTree() {
+  const privKeys = [], leaves = [];
+  for (let i = 0; i < NUM_LEAVES; i++) {
+    const pk = keccak256('arc-demo-' + i);
+    privKeys.push(pk);
+    leaves.push(keccak256(keccak256(pk)));
+  }
+  let level = [...leaves];
+  while (level.length > 1) {
+    const next = [];
+    for (let i = 0; i < level.length; i += 2)
+      next.push(keccak256((i+1<level.length) ? level[i]+level[i+1] : level[i]));
+    level = next;
+  }
+  return { privKeys, leaves, root: level[0] };
+}
+
+function genProof(idx, leaves) {
+  const proof = [];
+  let level = [...leaves], ci = idx;
+  for (let h = 0; h < TREE_HEIGHT; h++) {
+    const sib = (ci % 2 === 0) ? ci + 1 : ci - 1;
+    proof.push(sib < level.length ? level[sib] : '0'.repeat(64));
+    ci = Math.floor(ci / 2);
+    const next = [];
+    for (let i = 0; i < level.length; i += 2)
+      next.push(keccak256((i+1<level.length) ? level[i]+level[i+1] : level[i]));
+    level = next;
+  }
+  return proof;
+}
+
+function verifyMerkle(digest, sig) {
+  const leafPubKey = keccak256(sig.privKey);
+  if (sig.sigComponent !== keccak256(sig.privKey + digest)) return false;
+  let node = keccak256(leafPubKey);
+  for (let i = 0; i < TREE_HEIGHT; i++) {
+    node = ((sig.leafIndex >> i) & 1) === 0 ? keccak256(node + sig.proof[i]) : keccak256(sig.proof[i] + node);
+  }
+  return node === sig.root;
+}
+
+const demoTree = genDemoTree();
+
+function demoSign() {
+  const msg = document.getElementById('msgInput').value || '默认消息';
+  const digest = keccak256(msg);
+  const leafIdx = Math.floor(Math.random() * NUM_LEAVES);
+  const privKey = demoTree.privKeys[leafIdx];
+  const sigComponent = keccak256(privKey + digest);
+  const proof = genProof(leafIdx, demoTree.leaves);
+  const sig = { leafIndex: leafIdx, proof, privKey, sigComponent, root: demoTree.root };
+  const valid = verifyMerkle(digest, sig);
+
+  document.getElementById('sigResult').classList.remove('hidden');
+  document.getElementById('sigDigest').textContent = '0x' + digest;
+  document.getElementById('sigLeafPub').textContent = '0x' + keccak256(privKey);
+  document.getElementById('sigComponent').textContent = '0x' + sigComponent;
+  document.getElementById('sigProof').textContent = proof.map(p => '0x' + p).join('\n');
+  const el = document.getElementById('sigResultText');
+  el.textContent = valid ? '✅ 签名有效! Merkle 根匹配' : '❌ 签名无效!';
+  el.className = valid ? 'text-lg font-bold text-emerald-400' : 'text-lg font-bold text-red-400';
+}
+
+// ============================================================
+// Init
+// ============================================================
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('msgInput').value = 'Hello, quantum-resistant Arc!';
+  demoSign();
+  
+  // Try auto-connecting if ethereum is available
+  if (window.ethereum && window.ethereum.selectedAddress) {
+    setTimeout(connectWallet, 300);
+  }
+  
+  // Quick initial check using RPC
+  setTimeout(refreshAll, 1000);
+});
+</script>
+</body>
+</html>

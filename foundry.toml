@@ -1,0 +1,16 @@
+[profile.default]
+src = "src"
+out = "out"
+libs = ["lib"]
+solc = "0.8.28"
+evm_version = "cancun"
+via_ir = true
+
+# Arc Testnet
+[rpc_endpoints]
+arc_testnet = "https://rpc.testnet.arc.network"
+
+[etherscan]
+# Arc Testnet block explorer
+arc_testnet = { key = "", url = "https://testnet.arcscan.app" }
+arc_testnet_blockscout = { key = "", url = "https://testnet.arcscan.app" }
