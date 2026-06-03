@@ -486,35 +486,32 @@ function showLoading(id, msg) {
 async function connectWallet() {
   try {
     if (!window.ethereum) { toast('Please install MetaMask! 🦊', 'error'); return; }
+    // Switch to Arc Testnet FIRST — prompt appears immediately
+    try {
+      await window.ethereum.request({
+        method: 'wallet_switchEthereumChain',
+        params: [{ chainId: '0x4CEF52' }],
+      });
+    } catch(e) {
+      if (e.code === 4902) {
+        await window.ethereum.request({
+          method: 'wallet_addEthereumChain',
+          params: [{ chainId: '0x4CEF52', chainName: 'Arc Testnet', rpcUrls: ['https://rpc.testnet.arc.network'], nativeCurrency: { name: 'USDC', symbol: 'USDC', decimals: 18 } }],
+        });
+      }
+    }
     provider = new ethers.providers.Web3Provider(window.ethereum);
     await provider.send('eth_requestAccounts', []);
     signer = provider.getSigner();
     userAddr = await signer.getAddress();
     const net = await provider.getNetwork();
-    
+
     document.getElementById('connectBtn').textContent = `✅ ${userAddr.slice(0,6)}...${userAddr.slice(-4)}`;
     document.getElementById('connectBtn').onclick = null;
     document.getElementById('statusBar').classList.remove('hidden');
     document.getElementById('walletAddr').textContent = userAddr;
-    
-    if (net.chainId !== 5042002) {
-      document.getElementById('chainBadge').innerHTML = '⚠️ Please switch to Arc Testnet';
-      try {
-        await window.ethereum.request({
-          method: 'wallet_switchEthereumChain',
-          params: [{ chainId: '0x4CEF52' }],
-        });
-      } catch(e) {
-        if (e.code === 4902) {
-          await window.ethereum.request({
-            method: 'wallet_addEthereumChain',
-            params: [{ chainId: '0x4CEF52', chainName: 'Arc Testnet', rpcUrls: ['https://rpc.testnet.arc.network'], nativeCurrency: { name: 'USDC', symbol: 'USDC', decimals: 18 } }],
-          });
-        }
-      }
-    } else {
-      document.getElementById('chainBadge').innerHTML = '🟢 Arc Testnet';
-    }
+
+    document.getElementById('chainBadge').innerHTML = net.chainId === 5042002 ? '🟢 Arc Testnet' : '⚠️ Wrong chain';
     document.getElementById('liveStatus').innerHTML = '🟢 Connected';
     document.getElementById('btnGenStealthKey').disabled = false;
     document.getElementById('btnScanInbox').disabled = false;
