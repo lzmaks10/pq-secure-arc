@@ -1,13 +1,13 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
-<meta name="description" content="Post-Quantum Smart Account System on Arc Testnet — PQ-Ready interactive DApp">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>PQ-Ready Arc — Interactive DApp</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.2.0/crypto-js.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/elliptic/6.5.4/elliptic.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
 *{font-family:'Inter',system-ui,sans-serif}
@@ -48,24 +48,23 @@ pre{white-space:pre-wrap;word-break:break-all}
         ⚪ Not Connected
       </span>
       <button id="connectBtn" onclick="connectWallet()" class="px-5 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-lg text-sm font-medium hover:from-blue-500 hover:to-indigo-500 transition-all">
-        <span>🔗 Connect MetaMask</span>
+        🔗 Connect MetaMask
       </button>
-      
     </div>
   </div>
 
   <!-- Connection status bar -->
   <div id="statusBar" class="text-xs text-gray-500 mb-4 hidden">
-    <span>Wallet:</span> <span id="walletAddr" class="hash text-blue-400"></span>
+    Wallet: <span id="walletAddr" class="hash text-blue-400"></span>
     · Explorer: <a href="https://testnet.arcscan.app" target="_blank" class="text-blue-400 underline">testnet.arcscan.app</a>
   </div>
 
   <!-- Stats row -->
   <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6" id="statsRow">
-    <div class="card rounded-xl p-4 glow"><div class="text-gray-400 text-xs uppercase tracking-wider"><span>Signature Schemes</span></div><div class="text-2xl font-bold mt-1">3</div><div class="text-xs text-gray-500 mt-1"><span>ECDSA · Hash · Hybrid</span></div></div>
-    <div class="card rounded-xl p-4 glow"><div class="text-gray-400 text-xs uppercase tracking-wider"><span>Deployed Accounts</span></div><div class="text-2xl font-bold mt-1">5</div><div class="text-xs text-gray-500 mt-1"><span>PQ-native + Migrating</span></div></div>
-    <div class="card rounded-xl p-4 glow"><div class="text-gray-400 text-xs uppercase tracking-wider"><span>Contracts Verified</span></div><div class="text-2xl font-bold mt-1 text-emerald-400">✅ All</div><div class="text-xs text-gray-500 mt-1"><span>Blockscout Verified</span></div></div>
-    <div class="card rounded-xl p-4 glow"><div class="text-gray-400 text-xs uppercase tracking-wider"><span>Gateway</span></div><div class="text-2xl font-bold mt-1" id="liveStatus">⚪ Awaiting Connection</div><div class="text-xs text-gray-500 mt-1">Interact via MetaMask</div></div>
+    <div class="card rounded-xl p-4 glow"><div class="text-gray-400 text-xs uppercase tracking-wider">签名方案</div><div class="text-2xl font-bold mt-1">3</div><div class="text-xs text-gray-500 mt-1">ECDSA · Hash · Hybrid</div></div>
+    <div class="card rounded-xl p-4 glow"><div class="text-gray-400 text-xs uppercase tracking-wider">已部署账户</div><div class="text-2xl font-bold mt-1">5</div><div class="text-xs text-gray-500 mt-1">PQ-native + 迁移中</div></div>
+    <div class="card rounded-xl p-4 glow"><div class="text-gray-400 text-xs uppercase tracking-wider">合约验证</div><div class="text-2xl font-bold mt-1 text-emerald-400">✅ 全部</div><div class="text-xs text-gray-500 mt-1">Blockscout Verified</div></div>
+    <div class="card rounded-xl p-4 glow"><div class="text-gray-400 text-xs uppercase tracking-wider">网关</div><div class="text-2xl font-bold mt-1" id="liveStatus">⚪ 等待连接</div><div class="text-xs text-gray-500 mt-1">通过 MetaMask 交互</div></div>
   </div>
 
   <!-- Contract Addresses Bar -->
@@ -79,7 +78,7 @@ pre{white-space:pre-wrap;word-break:break-all}
       <span class="text-gray-600 mx-1">|</span>
       <span class="text-xs text-gray-300">Accounts:</span>
       <a href="https://testnet.arcscan.app/address/0xbe98b7057476ccc007b7ba490440762c8587c416" target="_blank" class="text-xs px-2 py-0.5 rounded bg-emerald-900/30 text-emerald-300">T1 PQ</a>
-      <a href="https://testnet.arcscan.app/address/0xbd02d9b066ee4e4023a861d8fff7f881cd2c19c8" target="_blank" class="text-xs px-2 py-0.5 rounded bg-yellow-900/30 text-yellow-300">T2 Migrating</a>
+      <a href="https://testnet.arcscan.app/address/0xbd02d9b066ee4e4023a861d8fff7f881cd2c19c8" target="_blank" class="text-xs px-2 py-0.5 rounded bg-yellow-900/30 text-yellow-300">T2 迁移中</a>
       <a href="https://testnet.arcscan.app/address/0x870924e38cd2dc2bf44697d35f818666d8897728" target="_blank" class="text-xs px-2 py-0.5 rounded bg-purple-900/30 text-purple-300">T3 Hybrid</a>
       <a href="https://testnet.arcscan.app/address/0x30e419908fb7d8e752a400547839f9f8960dabdd" target="_blank" class="text-xs px-2 py-0.5 rounded bg-orange-900/30 text-orange-300">T4 Recovery</a>
     </div>
@@ -87,114 +86,113 @@ pre{white-space:pre-wrap;word-break:break-all}
 
   <!-- Tabs -->
   <div class="flex gap-6 border-b border-gray-800 mb-6 overflow-x-auto">
-    <button class="tab-btn active pb-2 text-sm font-medium" onclick="switchTab('explorer',this)"><span>🔍 Account Explorer</span></button>
-    <button class="tab-btn pb-2 text-sm font-medium" onclick="switchTab('migration',this)"><span>🔄 Migration</span></button>
-    <button class="tab-btn pb-2 text-sm font-medium" onclick="switchTab('recovery',this)"><span>🛡️ Recovery</span></button>
-    <button class="tab-btn pb-2 text-sm font-medium" onclick="switchTab('register',this)"><span>🗝️ Register Key</span></button>
-    <button class="tab-btn pb-2 text-sm font-medium" onclick="switchTab('pqdemo',this)"><span>🧪 PQ Signature</span></button>
-    <button class="tab-btn pb-2 text-sm font-medium" onclick="switchTab('about',this)"><span>📖 About</span></button>
-    <button class="tab-btn pb-2 text-sm font-medium" onclick="switchTab('create',this)">🚀 Create Account</button>
+    <button class="tab-btn active pb-2 text-sm font-medium" onclick="switchTab('explorer',this)">🔍 账户查询</button>
+    <button class="tab-btn pb-2 text-sm font-medium" onclick="switchTab('migration',this)">🔄 迁移</button>
+    <button class="tab-btn pb-2 text-sm font-medium" onclick="switchTab('recovery',this)">🛡️ 恢复</button>
+    <button class="tab-btn pb-2 text-sm font-medium" onclick="switchTab('register',this)">🗝️ 注册密钥</button>
+    <button class="tab-btn pb-2 text-sm font-medium" onclick="switchTab('pqdemo',this)">🧪 PQ 签名</button>
+    <button class="tab-btn pb-2 text-sm font-medium" onclick="switchTab('privacy',this)">🛡️ Privacy</button>
   </div>
 
   <!-- Tab: Explorer -->
   <div id="tab-explorer" class="tab-content">
     <div class="card rounded-xl p-6 glow mb-6">
-      <h2 class="text-lg font-semibold mb-4"><span>🔍 On-Chain Account Query</span></h2>
+      <h2 class="text-lg font-semibold mb-4">🔍 链上账户查询</h2>
       <div class="flex gap-3 mb-4">
-        <input id="explorerAddr" type="text" placeholder="Enter account address..." class="flex-1 bg-gray-800/50 border border-gray-600/30 rounded-lg px-4 py-2 text-sm focus:outline-none focus:border-blue-500/50">
-        <button onclick="queryAccount()" class="btn-primary px-5 py-2 rounded-lg text-sm font-medium text-white"><span>Query</span></button>
+        <input id="explorerAddr" type="text" placeholder="输入账户地址..." class="flex-1 bg-gray-800/50 border border-gray-600/30 rounded-lg px-4 py-2 text-sm focus:outline-none focus:border-blue-500/50">
+        <button onclick="queryAccount()" class="btn-primary px-5 py-2 rounded-lg text-sm font-medium text-white">查询</button>
       </div>
       <div id="explorerResult" class="hidden">
         <div class="grid md:grid-cols-2 gap-4">
           <div class="bg-gray-800/30 rounded-lg p-4">
-            <div class="text-xs text-gray-400 mb-1"><span>Current Scheme</span></div>
+            <div class="text-xs text-gray-400 mb-1">当前方案</div>
             <div id="expScheme" class="text-sm font-medium text-blue-300">-</div>
           </div>
           <div class="bg-gray-800/30 rounded-lg p-4">
-            <div class="text-xs text-gray-400 mb-1"><span>PQ-Resistant?</span></div>
+            <div class="text-xs text-gray-400 mb-1">抗量子?</div>
             <div id="expPq" class="text-sm font-medium">-</div>
           </div>
           <div class="bg-gray-800/30 rounded-lg p-4">
-            <div class="text-xs text-gray-400 mb-1"><span>Nonce</span></div>
+            <div class="text-xs text-gray-400 mb-1">Nonce</div>
             <div id="expNonce" class="text-sm font-medium text-purple-300">-</div>
           </div>
           <div class="bg-gray-800/30 rounded-lg p-4">
-            <div class="text-xs text-gray-400 mb-1"><span>Paused</span></div>
+            <div class="text-xs text-gray-400 mb-1">暂停状态</div>
             <div id="expPaused" class="text-sm font-medium">-</div>
           </div>
         </div>
         <div class="grid md:grid-cols-3 gap-4 mt-4">
           <div class="bg-gray-800/30 rounded-lg p-4">
-            <div class="text-xs text-gray-400 mb-1">🔗 Migration Manager</div>
+            <div class="text-xs text-gray-400 mb-1">🔗 迁移管理器</div>
             <div id="expMigrator" class="hash text-xs text-blue-300">-</div>
           </div>
           <div class="bg-gray-800/30 rounded-lg p-4">
-            <div class="text-xs text-gray-400 mb-1">🛡️ RecoveryManager</div>
+            <div class="text-xs text-gray-400 mb-1">🛡️ 恢复管理器</div>
             <div id="expRecovery" class="hash text-xs text-blue-300">-</div>
           </div>
           <div class="bg-gray-800/30 rounded-lg p-4">
-            <div class="text-xs text-gray-400 mb-1">📊 Migration Status</div>
+            <div class="text-xs text-gray-400 mb-1">📊 迁移状态</div>
             <div id="expMigStatus" class="text-xs">-</div>
           </div>
         </div>
       </div>
     </div>
     <div class="card rounded-xl p-6 glow">
-      <h2 class="text-lg font-semibold mb-4"><span>🏦 Deployed Accounts</span></h2>
+      <h2 class="text-lg font-semibold mb-4">🏦 部署账户一览</h2>
       <div class="overflow-x-auto">
         <table class="w-full text-sm">
           <thead><tr class="text-gray-400 border-b border-gray-700/50">
-            <th class="text-left pb-2 font-medium"><span>Label</span></th><th class="text-left pb-2 font-medium"><span>Address</span></th><th class="text-left pb-2 font-medium"><span>Scheme</span></th><th class="text-left pb-2 font-medium"><span>Nonce</span></th><th class="text-left pb-2 font-medium">Migration</th>
+            <th class="text-left pb-2 font-medium">标签</th><th class="text-left pb-2 font-medium">地址</th><th class="text-left pb-2 font-medium">方案</th><th class="text-left pb-2 font-medium">非ce</th><th class="text-left pb-2 font-medium">迁移</th>
           </tr></thead>
           <tbody id="accountsTableBody" class="text-gray-300">
             <tr><td class="py-2">T1 PQ-Native</td><td class="py-2 hash text-xs"><a href="https://testnet.arcscan.app/address/0xbe98b7057476ccc007b7ba490440762c8587c416" target="_blank" class="text-blue-400">0xbE98b7…7C416</a></td><td id="l-t1-scheme" class="py-2">-</td><td id="l-t1-nonce" class="py-2">-</td><td id="l-t1-pq" class="py-2">-</td></tr>
-            <tr><td class="py-2">T2 Migrating</td><td class="py-2 hash text-xs"><a href="https://testnet.arcscan.app/address/0xbd02d9b066ee4e4023a861d8fff7f881cd2c19c8" target="_blank" class="text-blue-400">0xbD02D9…2C19C8</a></td><td id="l-t2-scheme" class="py-2">-</td><td id="l-t2-nonce" class="py-2">-</td><td id="l-t2-pq" class="py-2">-</td></tr>
+            <tr><td class="py-2">T2 迁移中</td><td class="py-2 hash text-xs"><a href="https://testnet.arcscan.app/address/0xbd02d9b066ee4e4023a861d8fff7f881cd2c19c8" target="_blank" class="text-blue-400">0xbD02D9…2C19C8</a></td><td id="l-t2-scheme" class="py-2">-</td><td id="l-t2-nonce" class="py-2">-</td><td id="l-t2-pq" class="py-2">-</td></tr>
             <tr><td class="py-2">T3 Hybrid</td><td class="py-2 hash text-xs"><a href="https://testnet.arcscan.app/address/0x870924e38cd2dc2bf44697d35f818666d8897728" target="_blank" class="text-blue-400">0x870924…897728</a></td><td id="l-t3-scheme" class="py-2">-</td><td id="l-t3-nonce" class="py-2">-</td><td id="l-t3-pq" class="py-2">-</td></tr>
-            <tr><td class="py-2">Demo Migration</td><td class="py-2 hash text-xs"><a href="https://testnet.arcscan.app/address/0x083beae6d9ca06c465dad123ce480e972153b881" target="_blank" class="text-blue-400">0x083bEa…B881</a></td><td id="l-demo-scheme" class="py-2">-</td><td id="l-demo-nonce" class="py-2">-</td><td id="l-demo-pq" class="py-2">-</td></tr>
+            <tr><td class="py-2">Demo 迁移</td><td class="py-2 hash text-xs"><a href="https://testnet.arcscan.app/address/0x083beae6d9ca06c465dad123ce480e972153b881" target="_blank" class="text-blue-400">0x083bEa…B881</a></td><td id="l-demo-scheme" class="py-2">-</td><td id="l-demo-nonce" class="py-2">-</td><td id="l-demo-pq" class="py-2">-</td></tr>
           </tbody>
         </table>
       </div>
-      <button onclick="refreshAll()" class="mt-4 px-4 py-1.5 bg-gray-700/50 rounded-lg text-xs hover:bg-gray-700 transition-all">🔄 Refresh All</button>
+      <button onclick="refreshAll()" class="mt-4 px-4 py-1.5 bg-gray-700/50 rounded-lg text-xs hover:bg-gray-700 transition-all">🔄 刷新全部</button>
     </div>
   </div>
 
   <!-- Tab: Migration -->
   <div id="tab-migration" class="tab-content hidden">
     <div class="card rounded-xl p-6 glow mb-6">
-      <h2 class="text-lg font-semibold mb-4"><span>🔄 MigrationManager</span></h2>
-      <p class="text-sm text-gray-400 mb-4"><span>View and trigger signature scheme migrations. Min timelock: 7 days.</span></p>
+      <h2 class="text-lg font-semibold mb-4">🔄 迁移管理器</h2>
+      <p class="text-sm text-gray-400 mb-4">查看和触发账户签名方案迁移。最小 timelock: 7 天。</p>
       <div class="flex gap-3 mb-4">
-        <input id="migMgrAddr" type="text" placeholder="MigrationManager Address (0x1f7b64...ff65 或 0x053159...Ea65)" class="flex-1 bg-gray-800/50 border border-gray-600/30 rounded-lg px-4 py-2 text-sm focus:outline-none focus:border-blue-500/50">
-        <input id="migAcctAddr" type="text" placeholder="Corresponding account address ((optional))" class="flex-1 bg-gray-800/50 border border-gray-600/30 rounded-lg px-4 py-2 text-sm focus:outline-none focus:border-blue-500/50">
-        <button onclick="inspectMigration()" class="btn-primary px-4 py-2 rounded-lg text-sm font-medium text-white"><span>Inspect</span></button>
+        <input id="migMgrAddr" type="text" placeholder="MigrationManager 地址 (0x1f7b64...ff65 或 0x053159...Ea65)" class="flex-1 bg-gray-800/50 border border-gray-600/30 rounded-lg px-4 py-2 text-sm focus:outline-none focus:border-blue-500/50">
+        <input id="migAcctAddr" type="text" placeholder="对应账户地址 (可选)" class="flex-1 bg-gray-800/50 border border-gray-600/30 rounded-lg px-4 py-2 text-sm focus:outline-none focus:border-blue-500/50">
+        <button onclick="inspectMigration()" class="btn-primary px-4 py-2 rounded-lg text-sm font-medium text-white">检查</button>
       </div>
       <div id="migResult" class="hidden">
         <div class="grid md:grid-cols-3 gap-4 mb-4">
-          <div class="bg-gray-800/30 rounded-lg p-3"><div class="text-xs text-gray-400"><span>Current Module</span></div><div id="migCurrent" class="text-sm font-medium hash text-xs mt-1">-</div></div>
-          <div class="bg-gray-800/30 rounded-lg p-3"><div class="text-xs text-gray-400"><span>Pending Module</span></div><div id="migPending" class="text-sm font-medium hash text-xs mt-1">-</div></div>
-          <div class="bg-gray-800/30 rounded-lg p-3"><div class="text-xs text-gray-400"><span>Timelock</span></div><div id="migTimestamp" class="text-sm font-medium mt-1">-</div></div>
+          <div class="bg-gray-800/30 rounded-lg p-3"><div class="text-xs text-gray-400">当前模块</div><div id="migCurrent" class="text-sm font-medium hash text-xs mt-1">-</div></div>
+          <div class="bg-gray-800/30 rounded-lg p-3"><div class="text-xs text-gray-400">待迁移模块</div><div id="migPending" class="text-sm font-medium hash text-xs mt-1">-</div></div>
+          <div class="bg-gray-800/30 rounded-lg p-3"><div class="text-xs text-gray-400">timelock 时间</div><div id="migTimestamp" class="text-sm font-medium mt-1">-</div></div>
         </div>
         <div class="grid md:grid-cols-6 gap-2">
-          <button onclick="executeMig()" class="btn-success px-3 py-2 rounded-lg text-xs font-medium text-white md:col-span-2">▶ ▶ Execute</button>
-          <button onclick="cancelMig()" class="btn-danger px-3 py-2 rounded-lg text-xs font-medium text-white">✕ ✕ Cancel</button>
-          <button onclick="scheduleMig()" class="btn-primary px-3 py-2 rounded-lg text-xs font-medium text-white md:col-span-3">📅 📅 Schedule → HashBased</button>
+          <button onclick="executeMig()" class="btn-success px-3 py-2 rounded-lg text-xs font-medium text-white md:col-span-2">▶ 立即执行迁移</button>
+          <button onclick="cancelMig()" class="btn-danger px-3 py-2 rounded-lg text-xs font-medium text-white">✕ 取消迁移</button>
+          <button onclick="scheduleMig()" class="btn-primary px-3 py-2 rounded-lg text-xs font-medium text-white md:col-span-3">📅 排期迁移到 HashBased</button>
         </div>
       </div>
     </div>
     <div class="card rounded-xl p-6 glow">
-      <h2 class="text-lg font-semibold mb-4"><span>⏱️ Migration Timeline</span></h2>
+      <h2 class="text-lg font-semibold mb-4">⏱️ 迁移时间线</h2>
       <div class="space-y-3">
         <div class="flex items-center gap-3 p-3 bg-emerald-900/10 rounded-lg border border-emerald-700/20">
           <span class="w-8 h-8 rounded-full bg-emerald-500/20 flex items-center justify-center text-emerald-400">✅</span>
-          <div><div class="text-sm font-medium">T1: PQ-Native</div><div class="text-xs text-gray-400">HashBasedModule <span>Direct deploy · Ready</span></div></div>
+          <div><div class="text-sm font-medium">T1: PQ-Native</div><div class="text-xs text-gray-400">HashBasedModule 直接部署 · 已就绪</div></div>
         </div>
         <div class="flex items-center gap-3 p-3 bg-yellow-900/10 rounded-lg border border-yellow-700/20">
           <span class="w-8 h-8 rounded-full bg-yellow-500/20 flex items-center justify-center text-yellow-400">⏳</span>
-          <div><div class="text-sm font-medium">T2: ECDSA → PQ</div><div class="text-xs text-gray-400"><span7-day timelock · ">7-day timelock · </span>">7-day timelock · </span><span id="migCountdown">-</span></div></div>
+          <div><div class="text-sm font-medium">T2: ECDSA → PQ</div><div class="text-xs text-gray-400">7 天 timelock 倒计时中 · <span id="migCountdown">-</span></div></div>
         </div>
         <div class="flex items-center gap-3 p-3 bg-purple-900/10 rounded-lg border border-purple-700/20">
           <span class="w-8 h-8 rounded-full bg-purple-500/20 flex items-center justify-center text-purple-400">🔀</span>
-          <div><div class="text-sm font-medium">T3: Hybrid</div><div class="text-xs text-gray-400">ECDSA + HashBased <span>Dual signature · Ready</span></div></div>
+          <div><div class="text-sm font-medium">T3: Hybrid</div><div class="text-xs text-gray-400">ECDSA + HashBased 双签名 · 已就绪</div></div>
         </div>
       </div>
     </div>
@@ -203,36 +201,36 @@ pre{white-space:pre-wrap;word-break:break-all}
   <!-- Tab: Recovery -->
   <div id="tab-recovery" class="tab-content hidden">
     <div class="card rounded-xl p-6 glow mb-6">
-      <h2 class="text-lg font-semibold mb-4"><span>🛡️ Social Recovery</span></h2>
-      <p class="text-sm text-gray-400 mb-4"><span>Lost your key? Let Guardians recover your account.</span></p>
+      <h2 class="text-lg font-semibold mb-4">🛡️ 社交恢复面板</h2>
+      <p class="text-sm text-gray-400 mb-4">密钥丢失？让守护者（Guardians）帮你恢复账户所有权。</p>
       <div class="flex gap-3 mb-4">
-        <input id="rcvAddr" type="text" placeholder="RecoveryManager address (0x30E419...DABDD)" class="flex-1 bg-gray-800/50 border border-gray-600/30 rounded-lg px-4 py-2 text-sm focus:outline-none focus:border-blue-500/50">
-        <button onclick="inspectRecovery()" class="btn-primary px-4 py-2 rounded-lg text-sm font-medium text-white">Inspect</button>
+        <input id="rcvAddr" type="text" placeholder="RecoveryManager 地址 (0x30E419...DABDD)" class="flex-1 bg-gray-800/50 border border-gray-600/30 rounded-lg px-4 py-2 text-sm focus:outline-none focus:border-blue-500/50">
+        <button onclick="inspectRecovery()" class="btn-primary px-4 py-2 rounded-lg text-sm font-medium text-white">检查</button>
       </div>
       <div id="rcvResult" class="hidden">
         <div class="grid md:grid-cols-4 gap-4 mb-4">
-          <div class="bg-gray-800/30 rounded-lg p-3"><div class="text-xs text-gray-400"><span>Owner</span></div><div id="rcvOwner" class="hash text-xs mt-1">-</div></div>
-          <div class="bg-gray-800/30 rounded-lg p-3"><div class="text-xs text-gray-400"><span>Guardians</span></div><div id="rcvGuardians" class="text-xs mt-1">-</div></div>
-          <div class="bg-gray-800/30 rounded-lg p-3"><div class="text-xs text-gray-400"><span><span>Required</span></span></div><div id="rcvRequired" class="text-sm font-medium mt-1">-</div></div>
-          <div class="bg-gray-800/30 rounded-lg p-3"><div class="text-xs text-gray-400"><span><span>Challenge Period</span></span></div><div id="rcvPeriod" class="text-sm font-medium mt-1">-</div></div>
+          <div class="bg-gray-800/30 rounded-lg p-3"><div class="text-xs text-gray-400">Owner</div><div id="rcvOwner" class="hash text-xs mt-1">-</div></div>
+          <div class="bg-gray-800/30 rounded-lg p-3"><div class="text-xs text-gray-400">Guardians</div><div id="rcvGuardians" class="text-xs mt-1">-</div></div>
+          <div class="bg-gray-800/30 rounded-lg p-3"><div class="text-xs text-gray-400">所需票数</div><div id="rcvRequired" class="text-sm font-medium mt-1">-</div></div>
+          <div class="bg-gray-800/30 rounded-lg p-3"><div class="text-xs text-gray-400">挑战期</div><div id="rcvPeriod" class="text-sm font-medium mt-1">-</div></div>
         </div>
         <div class="grid md:grid-cols-3 gap-3 mt-4">
-          <button onclick="initiateRecovery()" class="btn-primary px-3 py-2 rounded-lg text-xs font-medium text-white">📢 📢 Initiate</button>
-          <button onclick="approveRecovery()" class="btn-success px-3 py-2 rounded-lg text-xs font-medium text-white">✅ ✅ Approve</button>
-          <button onclick="executeRecovery()" class="btn-danger px-3 py-2 rounded-lg text-xs font-medium text-white">🚀 🚀 Execute</button>
+          <button onclick="initiateRecovery()" class="btn-primary px-3 py-2 rounded-lg text-xs font-medium text-white">📢 发起恢复</button>
+          <button onclick="approveRecovery()" class="btn-success px-3 py-2 rounded-lg text-xs font-medium text-white">✅ 批准恢复</button>
+          <button onclick="executeRecovery()" class="btn-danger px-3 py-2 rounded-lg text-xs font-medium text-white">🚀 执行恢复</button>
         </div>
         <div class="mt-4 bg-gray-800/30 rounded-lg p-4" id="rcvStatusArea">
-          <div class="text-xs text-gray-400 mb-1"><span>Recovery Status</span></div>
-          <div id="rcvStatus" class="text-sm font-medium text-yellow-400"><span>Not Initiated</span></div>
+          <div class="text-xs text-gray-400 mb-1">恢复状态</div>
+          <div id="rcvStatus" class="text-sm font-medium text-yellow-400">未发起</div>
         </div>
       </div>
     </div>
     <div class="card rounded-xl p-6 glow">
-      <h2 class="text-lg font-semibold mb-4"><span>👥 Existing RecoveryManagers</span></h2>
+      <h2 class="text-lg font-semibold mb-4">👥 现有 RecoveryManager 配置</h2>
       <div class="overflow-x-auto">
         <table class="w-full text-sm">
           <thead><tr class="text-gray-400 border-b border-gray-700/50">
-            <th class="text-left pb-2 font-medium">Address</th><th class="text-left pb-2 font-medium"><span>Guardians</span></th><th class="text-left pb-2 font-medium"><span>Threshold</span></th>
+            <th class="text-left pb-2 font-medium">地址</th><th class="text-left pb-2 font-medium">Guardians</th><th class="text-left pb-2 font-medium">阈值</th>
           </tr></thead>
           <tbody class="text-gray-300">
             <tr><td class="py-2 hash text-xs"><a href="https://testnet.arcscan.app/address/0x30e419908fb7d8e752a400547839f9f8960dabdd" target="_blank" class="text-blue-400">T4: 0x30E419…DABDD</a></td><td class="py-2 text-xs">0x3333, 0x4444</td><td class="py-2">2/2</td></tr>
@@ -246,196 +244,45 @@ pre{white-space:pre-wrap;word-break:break-all}
   <!-- Tab: Register PQ Key -->
   <div id="tab-register" class="tab-content hidden">
     <div class="card rounded-xl p-6 glow mb-6">
-      <h2 class="text-lg font-semibold mb-4"><span>🗝️ Register PQ Key</span></h2>
-      <p class="text-sm text-gray-400 mb-4"><span>Register Merkle root for hash-based signing.</span></p>
+      <h2 class="text-lg font-semibold mb-4">🗝️ 注册抗量子密钥</h2>
+      <p class="text-sm text-gray-400 mb-4">为已有账户注册 Merkle 树根哈希，启用哈希签名方案。</p>
       <div class="flex gap-3 mb-4">
-        <input id="regAccount" type="text" placeholder="PQAccount address" class="flex-1 bg-gray-800/50 border border-gray-600/30 rounded-lg px-4 py-2 text-sm focus:outline-none focus:border-blue-500/50">
+        <input id="regAccount" type="text" placeholder="PQAccount 地址" class="flex-1 bg-gray-800/50 border border-gray-600/30 rounded-lg px-4 py-2 text-sm focus:outline-none focus:border-blue-500/50">
         <input id="regMerkleRoot" type="text" placeholder="Merkle Root (hex bytes32)" class="flex-1 bg-gray-800/50 border border-gray-600/30 rounded-lg px-4 py-2 text-sm focus:outline-none focus:border-blue-500/50">
-        <button onclick="registerPqKey()" class="btn-primary px-4 py-2 rounded-lg text-sm font-medium text-white whitespace-nowrap"><span>Register</span></button>
+        <button onclick="registerPqKey()" class="btn-primary px-4 py-2 rounded-lg text-sm font-medium text-white whitespace-nowrap">注册</button>
       </div>
       <div id="regResult" class="hidden bg-gray-800/30 rounded-lg p-4">
         <div id="regMsg" class="text-sm"></div>
       </div>
       <div class="mt-4 bg-gray-800/20 rounded-lg p-4">
-        <div class="text-xs text-gray-400 mb-2">💡 <span>New Merkle Root Generator (client)</span></div>
-        <button onclick="generateNewRoot()" class="btn-primary px-4 py-1.5 rounded-lg text-xs font-medium text-white">🔄 🔄 Generate New Root</button>
+        <div class="text-xs text-gray-400 mb-2">💡 新 Merkle Root 生成器（客户端演示）</div>
+        <button onclick="generateNewRoot()" class="btn-primary px-4 py-1.5 rounded-lg text-xs font-medium text-white">🔄 生成新 Merkle Root</button>
         <div id="genRootResult" class="mt-2 hash text-xs text-emerald-400 hidden"></div>
       </div>
     </div>
   </div>
 
-  <!-- Tab: About -->
-  <div id="tab-about" class="tab-content hidden">
-    <div class="card rounded-xl p-6 glow mb-6">
-      <h2 class="text-lg font-semibold mb-4"><span>📖 AboutThis Project</span></h2>
-      <p class="text-sm text-gray-400 mb-4">A <strong class="text-blue-300">Arc Testnet</strong> built on <strong class="text-emerald-300">Post-Quantum Smart Account System</strong>，Following <a href="https://community.arc.io/home/blogs/circles-post-quantum-security-roadmap-securing-blockchains-smart-contracts-and-digital-assets-for-the-quantum-era-2026-05-30?utm_campaign=45486113-Post-Quantum%20Whitepaper&utm_source=arc-discord&utm_medium=arc-gradual&utm_content=post-quantum-whitepaper-blog" target="_blank" class="text-blue-400 underline">Circle 's PQ Security Roadmap</a>.</p>
-
-      <div class="grid md:grid-cols-2 gap-4 mb-6">
-        <div class="bg-blue-900/10 border border-blue-700/20 rounded-lg p-4">
-          <h3 class="text-blue-300 font-medium text-sm mb-3"><span>🔬 Why Post-Quantum?</span></h3>
-          <ul class="text-xs text-gray-400 space-y-2">
-            <li><strong class="text-gray-300"><span>Shor's Algorithm:</span></strong>Quantum computers break ECDSA — the foundation of all Ethereum wallets</li>
-            <li><strong class="text-gray-300"><span>Store-Now-Decrypt-Later:</span></strong>Attackers store encrypted traffic now, decrypt later when quantum matures</li>
-            <li><strong class="text-gray-300"><span>NIST Standards:</span></strong>NIST standardized SLH-DSA (SPHINCS+) & ML-KEM as PQ algorithms</li>
-            <li><strong class="text-gray-300"><span>Circle's Roadmap:</span></strong>Phased migration, hybrid signatures, upgradable architecture</li>
-          </ul>
-        </div>
-        <div class="bg-purple-900/10 border border-purple-700/20 rounded-lg p-4">
-          <h3 class="text-purple-300 font-medium text-sm mb-3"><span>🏗️ System Architecture</span></h3>
-          <ul class="text-xs text-gray-400 space-y-2">
-            <li><strong class="text-gray-300">📝 Pluggable Modules:</strong>ECDSAModule · HashBasedModule · HybridModule</li>
-            <li><strong class="text-gray-300">🔄 Migration Engine:</strong>7-day timelock, cancelable & reschedulable</li>
-            <li><strong class="text-gray-300">🛡️ M-of-N Social Recovery:</strong>Guardian threshold recovery, 3-day challenge</li>
-            <li><strong class="text-gray-300">🔐 PQAccount:</strong>Nonce replay protection, emergency pause</li>
-          </ul>
-        </div>
-      </div>
-
-      <div class="bg-gray-800/20 border border-gray-700/30 rounded-lg p-4 mb-6">
-        <h3 class="text-sm font-medium mb-3"><span>📋 Deployed Contracts</span></h3>
-        <div class="overflow-x-auto">
-          <table class="w-full text-xs">
-            <thead><tr class="text-gray-400 border-b border-gray-700">
-              <th class="text-left pb-2"><span>Component</span></th><th class="text-left pb-2">Address</th><th class="text-left pb-2"><span>Description</span></th>
-            </tr></thead>
-            <tbody class="text-gray-300">
-              <tr><td class="py-1.5">ECDSAModule</td><td class="py-1.5 hash"><a href="https://testnet.arcscan.app/address/0xbf2ba8ede210d184c10b4b4D3E183B0a7CD1F2E3" target="_blank" class="text-blue-400">0xbf2ba8…F2E3</a></td><td class="py-1.5"><span>Standard ECDSA</span></td></tr>
-              <tr><td class="py-1.5">HashBasedModule</td><td class="py-1.5 hash"><a href="https://testnet.arcscan.app/address/0x388E0c1AB76A5A8C7C4567Dd8566496f96620aaE" target="_blank" class="text-blue-400">0x388E0c…aaE</a></td><td class="py-1.5">⚛️ Hash-based (PQ-capable)</td></tr>
-              <tr><td class="py-1.5">HybridModule</td><td class="py-1.5 hash"><a href="https://testnet.arcscan.app/address/0x48bB3b57561d913d36634e991501fD1C7a578186" target="_blank" class="text-blue-400">0x48bB3b…186</a></td><td class="py-1.5">🔀 ECDSA+Hash Hybrid</td></tr>
-              <tr><td class="py-1.5">T1 PQ-Native</td><td class="py-1.5 hash"><a href="https://testnet.arcscan.app/address/0xbE98b7057476cCc007b7bA490440762C8587C416" target="_blank" class="text-blue-400">0xbE98b7…C416</a></td><td class="py-1.5">⚛️ Native PQ Account</td></tr>
-              <tr><td class="py-1.5">T2 Migrating</td><td class="py-1.5 hash"><a href="https://testnet.arcscan.app/address/0xbD02D9b066eE4E4023A861D8fff7F881cD2C19C8" target="_blank" class="text-blue-400">0xbD02D9…19C8</a></td><td class="py-1.5">⏳ ECDSA→PQ (pending)</td></tr>
-              <tr><td class="py-1.5">T3 Hybrid</td><td class="py-1.5 hash"><a href="https://testnet.arcscan.app/address/0x870924e38cD2dC2bf44697D35F818666D8897728" target="_blank" class="text-blue-400">0x870924…97728</a></td><td class="py-1.5">🔀 Hybrid</td></tr>
-              <tr><td class="py-1.5">T4 Recovery</td><td class="py-1.5 hash"><a href="https://testnet.arcscan.app/address/0x30E419908FB7d8E752a400547839f9f8960DABDD" target="_blank" class="text-blue-400">0x30E419…ABDD</a></td><td class="py-1.5">🛡️ 2-of-2 Recovery</td></tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      <div class="grid md:grid-cols-3 gap-4">
-        <a href="https://docs.arc.io" target="_blank" class="bg-gray-800/30 border border-gray-700/30 rounded-lg p-3 hover:bg-gray-800/50 transition-all">
-          <div class="text-xs font-medium text-blue-300 mb-1">📘 <span>Arc Official Docs</span></div>
-          <div class="text-xs text-gray-500">docs.arc.io</div>
-        </a>
-        <a href="https://community.arc.io/home/blogs/circles-post-quantum-security-roadmap-securing-blockchains-smart-contracts-and-digital-assets-for-the-quantum-era-2026-05-30?utm_campaign=45486113-Post-Quantum%20Whitepaper&utm_source=arc-discord&utm_medium=arc-gradual&utm_content=post-quantum-whitepaper-blog" target="_blank" class="bg-gray-800/30 border border-gray-700/30 rounded-lg p-3 hover:bg-gray-800/50 transition-all">
-          <div class="text-xs font-medium text-purple-300 mb-1">📄 Circle PQ Roadmap</div>
-          <div class="text-xs text-gray-500">community.arc.io — Official PQ Whitepaper</div>
-        </a>
-        <a href="https://testnet.arcscan.app" target="_blank" class="bg-gray-800/30 border border-gray-700/30 rounded-lg p-3 hover:bg-gray-800/50 transition-all">
-          <div class="text-xs font-medium text-emerald-300 mb-1">🔍 Blockscout Explorer</div>
-          <div class="text-xs text-gray-500">testnet.arcscan.app</div>
-        </a>
-      </div>
-    </div>
-  </div>
-  <!-- Tab: Create Account -->
-  <div id="tab-create" class="tab-content hidden">
-    <div class="card rounded-xl p-6 glow mb-6">
-      <h2 class="text-lg font-semibold mb-4">🚀 Deploy Your Own PQAccount</h2>
-      <p class="text-sm text-gray-400 mb-4">Create a post-quantum-ready smart account. You'll deploy 3 contracts from your wallet — you pay gas in USDC.</p>
-
-      <div class="grid gap-4 mb-6">
-        <!-- Step 1: Connect -->
-        <div id="create-step-connect" class="bg-blue-900/10 border border-blue-700/20 rounded-lg p-4">
-          <h3 class="text-blue-300 text-sm font-medium mb-2">1️⃣ Connect Wallet</h3>
-          <p class="text-xs text-gray-400" id="createConnectMsg">Connect your MetaMask wallet to get started.</p>
-        </div>
-
-        <!-- Step 2: Choose Scheme -->
-        <div class="bg-gray-800/20 border border-gray-700/30 rounded-lg p-4">
-          <h3 class="text-sm font-medium mb-3">2️⃣ Choose Initial Signature Scheme</h3>
-          <div class="grid grid-cols-3 gap-3">
-            <label class="cursor-pointer">
-              <input type="radio" name="scheme" value="ecdsa" checked class="sr-only peer">
-              <div class="p-3 rounded-lg border border-gray-700 bg-gray-800/30 peer-checked:border-blue-500 peer-checked:bg-blue-900/20">
-                <div class="text-xs font-medium">ECDSA</div>
-                <div class="text-xs text-gray-500 mt-1">Current standard</div>
-              </div>
-            </label>
-            <label class="cursor-pointer">
-              <input type="radio" name="scheme" value="hash" class="sr-only peer">
-              <div class="p-3 rounded-lg border border-gray-700 bg-gray-800/30 peer-checked:border-emerald-500 peer-checked:bg-emerald-900/20">
-                <div class="text-xs font-medium">PQ-Native</div>
-                <div class="text-xs text-gray-500 mt-1">Hash-based (PQ-ready)</div>
-              </div>
-            </label>
-            <label class="cursor-pointer">
-              <input type="radio" name="scheme" value="hybrid" class="sr-only peer">
-              <div class="p-3 rounded-lg border border-gray-700 bg-gray-800/30 peer-checked:border-purple-500 peer-checked:bg-purple-900/20">
-                <div class="text-xs font-medium">Hybrid</div>
-                <div class="text-xs text-gray-500 mt-1">ECDSA + Hash dual</div>
-              </div>
-            </label>
-          </div>
-        </div>
-
-        <!-- Step 3: Guardians -->
-        <div class="bg-gray-800/20 border border-gray-700/30 rounded-lg p-4">
-          <h3 class="text-sm font-medium mb-3">3️⃣ Set Recovery Guardians (Optional)</h3>
-          <p class="text-xs text-gray-400 mb-3">Guardians can help recover your account if you lose access. Default: just you (1-of-1).</p>
-          <div id="guardianInputs">
-            <div class="flex gap-2 mb-2">
-              <input type="text" id="guardian0" readonly value="" class="flex-1 bg-gray-800/50 border border-gray-600/30 rounded-lg px-3 py-1.5 text-xs focus:outline-none opacity-60">
-              <span class="text-xs text-gray-500 py-1.5">You (connected wallet)</span>
-            </div>
-          </div>
-          <div class="flex gap-2">
-            <input type="text" id="newGuardianInput" placeholder="Add guardian address..." class="flex-1 bg-gray-800/50 border border-gray-600/30 rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:border-blue-500/50">
-            <button onclick="addGuardianField()" class="px-3 py-1.5 bg-gray-700/50 rounded-lg text-xs hover:bg-gray-700">+ Add</button>
-          </div>
-          <div class="text-xs text-gray-500 mt-2">Required approvals: <select id="requiredGuardians" class="bg-gray-800 border border-gray-700 rounded px-2 py-0.5 text-xs"><option value="1">1</option></select></div>
-        </div>
-
-        <!-- Step 4: Deploy -->
-        <div class="bg-gray-800/20 border border-gray-700/30 rounded-lg p-4">
-          <h3 class="text-sm font-medium mb-3">4️⃣ Deploy</h3>
-          <div class="text-xs text-gray-400 mb-3">
-            Gas estimate: <span id="gasEstimate">~0.001 USDC</span> (native token)
-          </div>
-          <button id="deployBtn" onclick="deployAccount()" class="btn-primary px-6 py-2.5 rounded-lg text-sm font-medium text-white">
-            🚀 Deploy My PQAccount
-          </button>
-          <div id="deployProgress" class="hidden mt-4 space-y-2">
-            <div class="flex items-center gap-2 text-xs"><span id="step1" class="w-4 h-4 rounded-full bg-gray-700 inline-block"></span> Deploying MigrationManager...</div>
-            <div class="flex items-center gap-2 text-xs"><span id="step2" class="w-4 h-4 rounded-full bg-gray-700 inline-block"></span> Deploying RecoveryManager...</div>
-            <div class="flex items-center gap-2 text-xs"><span id="step3" class="w-4 h-4 rounded-full bg-gray-700 inline-block"></span> Deploying PQAccount...</div>
-            <div class="flex items-center gap-2 text-xs"><span id="step4" class="w-4 h-4 rounded-full bg-gray-700 inline-block hidden"></span> Registering PQ key (if applicable)...</div>
-          </div>
-        </div>
-
-        <!-- Result -->
-        <div id="deployResult" class="hidden bg-emerald-900/10 border border-emerald-700/20 rounded-lg p-4">
-          <h3 class="text-sm font-medium text-emerald-400 mb-2">✅ PQAccount Deployed!</h3>
-          <div class="text-xs text-gray-400 mb-1">Your PQAccount Address:</div>
-          <div class="hash text-xs text-blue-300 mb-3" id="newAccountAddr">-</div>
-          <div class="flex gap-2">
-            <a id="explorerLink" href="#" target="_blank" class="px-3 py-1.5 bg-gray-700/50 rounded-lg text-xs hover:bg-gray-700">🔍 View on Explorer</a>
-            <button onclick="document.getElementById('tab-'+'explorer').classList.remove('hidden'); document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active')); switchTab('explorer', document.querySelector('[onclick*=\\'explorer\\']'))" class="px-3 py-1.5 bg-gray-700/50 rounded-lg text-xs hover:bg-gray-700">📋 Use Account</button>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
   <!-- Tab: PQ Demo -->
   <div id="tab-pqdemo" class="tab-content hidden">
     <div class="card rounded-xl p-6 glow">
-      <h2 class="text-lg font-semibold mb-4"><span>🧪 PQ Signature Demo (Client-Side Merkle)</span></h2>
-      <p class="text-sm text-gray-400 mb-4"><span>Sign a message to simulate on-chain HashBasedModule verification.</span></p>
+      <h2 class="text-lg font-semibold mb-4">🧪 PQ 签名演示（客户端 Merkle 模拟）</h2>
+      <p class="text-sm text-gray-400 mb-4">输入消息并签名，模拟链上 HashBasedModule 的验证流程。</p>
       <div class="flex gap-4 mb-6">
-        <input id="msgInput" type="text" placeholder="Enter a message to sign..." class="flex-1 bg-gray-800/50 border border-gray-600/30 rounded-lg px-4 py-2 text-sm focus:outline-none focus:border-blue-500/50">
-        <button onclick="demoSign()" class="btn-primary px-6 py-2 rounded-lg text-sm font-medium text-white"><span>Sign & Verify</span></button>
+        <input id="msgInput" type="text" placeholder="输入要签名的消息..." class="flex-1 bg-gray-800/50 border border-gray-600/30 rounded-lg px-4 py-2 text-sm focus:outline-none focus:border-blue-500/50">
+        <button onclick="demoSign()" class="btn-primary px-6 py-2 rounded-lg text-sm font-medium text-white">签名 & 验证</button>
       </div>
       <div id="sigResult" class="hidden">
         <div class="grid md:grid-cols-2 gap-4">
-          <div class="bg-gray-800/30 rounded-lg p-4"><div class="text-xs text-gray-400 mb-1"><span>📝 Message Digest</span></div><div class="hash text-xs" id="sigDigest">-</div></div>
-          <div class="bg-gray-800/30 rounded-lg p-4"><div class="text-xs text-gray-400 mb-1">🔑 OTS Public Key (leafPubKey)</div><div class="hash text-xs" id="sigLeafPub">-</div></div>
-          <div class="bg-gray-800/30 rounded-lg p-4"><div class="text-xs text-gray-400 mb-1"><span>📬 Signature Component</span></div><div class="hash text-xs" id="sigComponent">-</div></div>
+          <div class="bg-gray-800/30 rounded-lg p-4"><div class="text-xs text-gray-400 mb-1">📝 消息摘要</div><div class="hash text-xs" id="sigDigest">-</div></div>
+          <div class="bg-gray-800/30 rounded-lg p-4"><div class="text-xs text-gray-400 mb-1">🔑 OTS 公钥 (leafPubKey)</div><div class="hash text-xs" id="sigLeafPub">-</div></div>
+          <div class="bg-gray-800/30 rounded-lg p-4"><div class="text-xs text-gray-400 mb-1">📬 签名组件</div><div class="hash text-xs" id="sigComponent">-</div></div>
           <div class="bg-gray-800/30 rounded-lg p-4 border border-emerald-700/30">
-            <div class="text-xs text-emerald-400 mb-1">✅ <span>Verification Result</span></div>
+            <div class="text-xs text-emerald-400 mb-1">✅ 验证结果</div>
             <div id="sigResultText" class="text-lg font-bold">⏳</div>
           </div>
         </div>
         <div class="mt-4 bg-gray-800/30 rounded-lg p-4">
-          <div class="text-xs text-gray-400 mb-1"><span>🌲 Merkle Proof Path</span></div>
+          <div class="text-xs text-gray-400 mb-1">🌲 Merkle 证明路径</div>
           <div class="hash text-xs" id="sigProof">-</div>
         </div>
       </div>
@@ -443,8 +290,74 @@ pre{white-space:pre-wrap;word-break:break-all}
   </div>
 </div>
 
-<script>
+<!-- Tab: Privacy -->
+<div id="tab-privacy" class="tab-content hidden">
+  <div class="card rounded-xl p-6 glow mb-6">
+    <h2 class="text-lg font-semibold mb-4">🛡️ Stealth Privacy (ERC-5564)</h2>
+    <p class="text-sm text-gray-400 mb-4">
+      Optional privacy via stealth addresses. Generate a secp256k1 stealth key to encrypt your transaction data.
+      Only the intended recipient can decrypt and read the contents — on-chain observers see only encrypted ciphertext.
+    </p>
 
+    <!-- Stealth Key Section -->
+    <div class="grid md:grid-cols-2 gap-6 mb-6">
+      <div class="bg-gray-800/30 rounded-lg p-4">
+        <h3 class="text-sm font-semibold text-blue-300 mb-3">🔑 Your Stealth Identity</h3>
+        <div id="stealthKeyStatus" class="text-xs text-gray-400 mb-3">Not connected</div>
+        <button id="btnGenStealthKey" onclick="privacyGenKey()" class="btn-primary px-4 py-2 rounded-lg text-sm font-medium text-white bg-blue-600 hover:bg-blue-700" disabled>Generate Stealth Key</button>
+        <button id="btnRegStealthKey" onclick="privacyRegisterKey()" class="px-4 py-2 rounded-lg text-sm font-medium text-white bg-emerald-600 hover:bg-emerald-700 ml-2" disabled>Register On-Chain</button>
+        <button id="btnTogglePrivacy" onclick="privacyToggle()" class="px-4 py-2 rounded-lg text-sm font-medium text-white bg-purple-600 hover:bg-purple-700 ml-2" disabled>Toggle Privacy Mode</button>
+        <div id="privacyKeyInfo" class="mt-3 hidden">
+          <div class="text-xs text-gray-500 mb-1">Your stealth public key:</div>
+          <div class="hash text-xs bg-gray-900/50 rounded p-2" id="stealthPubDisplay">-</div>
+          <div class="text-xs text-gray-500 mt-2 mb-1">Privacy mode:</div>
+          <div id="privacyModeDisplay" class="text-sm font-bold text-gray-400">OFF</div>
+        </div>
+      </div>
+
+      <div class="bg-gray-800/30 rounded-lg p-4">
+        <h3 class="text-sm font-semibold text-purple-300 mb-3">👤 Target Wallet</h3>
+        <div id="targetWalletInfo" class="text-xs text-gray-400 mb-3">
+          Recipient's stealth key will be fetched on-chain when you send a private transaction.
+        </div>
+        <label class="text-xs text-gray-500">Recipient Address:</label>
+        <input id="privacyRecipient" type="text" placeholder="0x..." class="w-full bg-gray-800/50 border border-gray-600/30 rounded-lg px-4 py-2 text-sm focus:outline-none focus:border-purple-500/50 mb-3 mt-1">
+        <label class="text-xs text-gray-500">Private Message:</label>
+        <textarea id="privacyMessage" rows="2" placeholder="Type a private message..." class="w-full bg-gray-800/50 border border-gray-600/30 rounded-lg px-4 py-2 text-sm focus:outline-none focus:border-purple-500/50 mb-3 mt-1"></textarea>
+        <button id="btnSendPrivate" onclick="privacySend()" class="btn-primary px-4 py-2 rounded-lg text-sm font-medium text-white bg-purple-600 hover:bg-purple-700" disabled>🔒 Send Private →</button>
+      </div>
+    </div>
+
+    <!-- Private Inbox -->
+    <div class="bg-gray-800/30 rounded-lg p-4 mb-6">
+      <h3 class="text-sm font-semibold text-emerald-300 mb-3">📨 Private Inbox</h3>
+      <div class="flex gap-2 mb-3">
+        <button id="btnScanInbox" onclick="privacyScan()" class="px-4 py-2 rounded-lg text-sm font-medium bg-emerald-700 hover:bg-emerald-600 text-white" disabled>🔍 Scan for Private Txs</button>
+        <span id="inboxCount" class="text-xs text-gray-500 self-center">0 messages</span>
+      </div>
+      <div id="inboxList" class="space-y-2 max-h-48 overflow-y-auto">
+        <div class="text-xs text-gray-500 text-center py-4">No private transactions found. Scan to check.</div>
+      </div>
+    </div>
+
+    <!-- Test Wallet Section -->
+    <div class="bg-gray-800/30 rounded-lg p-4 border border-yellow-700/30">
+      <h3 class="text-sm font-semibold text-yellow-300 mb-3">🧪 Demo: Test Wallet B</h3>
+      <p class="text-xs text-gray-400 mb-3">Generate a second wallet to test private transactions between two wallets.</p>
+      <div class="flex gap-2 mb-3">
+        <button id="btnGenTestWallet" onclick="privacyGenTestWallet()" class="px-4 py-2 rounded-lg text-sm font-medium bg-yellow-700 hover:bg-yellow-600 text-white">🔄 Generate Wallet B</button>
+        <button id="btnFundTestWallet" onclick="privacyFundTestWallet()" class="px-4 py-2 rounded-lg text-sm font-medium bg-orange-700 hover:bg-orange-600 text-white" disabled>💰 Fund (0.001 ARC)</button>
+      </div>
+      <div id="testWalletInfo" class="hidden text-xs text-gray-400 space-y-1">
+        <div>Address: <span class="hash text-emerald-300" id="testWalletAddr">-</span></div>
+        <div>Balance: <span id="testWalletBal">0</span> ARC</div>
+        <div>Stealth Key: <span id="testWalletKeyStatus" class="text-yellow-300">Not registered</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
 // ============================================================
 // Configuration
 // ============================================================
@@ -470,181 +383,6 @@ const ABI_PQACCOUNT = [{"type":"constructor","inputs":[{"name":"_migrationManage
 const ABI_MIGRATION = [{"type":"constructor","inputs":[{"name":"_initialModule","type":"address","internalType":"address"},{"name":"_owner","type":"address","internalType":"address"}],"stateMutability":"nonpayable"},{"type":"function","name":"MAX_MIGRATION_DELAY","inputs":[],"outputs":[{"name":"","type":"uint256","internalType":"uint256"}],"stateMutability":"view"},{"type":"function","name":"MIN_MIGRATION_DELAY","inputs":[],"outputs":[{"name":"","type":"uint256","internalType":"uint256"}],"stateMutability":"view"},{"type":"function","name":"acceptOwnership","inputs":[],"outputs":[],"stateMutability":"nonpayable"},{"type":"function","name":"activeModule","inputs":[],"outputs":[{"name":"","type":"address","internalType":"contract ISignatureModule"}],"stateMutability":"view"},{"type":"function","name":"cancelMigration","inputs":[],"outputs":[],"stateMutability":"nonpayable"},{"type":"function","name":"executeMigration","inputs":[],"outputs":[],"stateMutability":"nonpayable"},{"type":"function","name":"getMigrationStatus","inputs":[],"outputs":[{"name":"pendingModule","type":"address","internalType":"address"},{"name":"executableAt","type":"uint256","internalType":"uint256"}],"stateMutability":"view"},{"type":"function","name":"migrationTimestamp","inputs":[],"outputs":[{"name":"","type":"uint256","internalType":"uint256"}],"stateMutability":"view"},{"type":"function","name":"owner","inputs":[],"outputs":[{"name":"","type":"address","internalType":"address"}],"stateMutability":"view"},{"type":"function","name":"pendingModule","inputs":[],"outputs":[{"name":"","type":"address","internalType":"contract ISignatureModule"}],"stateMutability":"view"},{"type":"function","name":"pendingOwner","inputs":[],"outputs":[{"name":"","type":"address","internalType":"address"}],"stateMutability":"view"},{"type":"function","name":"scheduleMigration","inputs":[{"name":"_module","type":"address","internalType":"address"},{"name":"_delay","type":"uint256","internalType":"uint256"}],"outputs":[],"stateMutability":"nonpayable"},{"type":"function","name":"transferOwnership","inputs":[{"name":"newOwner","type":"address","internalType":"address"}],"outputs":[],"stateMutability":"nonpayable"},{"type":"event","name":"MigrationCancelled","inputs":[{"name":"cancelledModule","type":"address","indexed":true,"internalType":"address"}],"anonymous":false},{"type":"event","name":"MigrationScheduled","inputs":[{"name":"newModule","type":"address","indexed":true,"internalType":"address"},{"name":"executableAt","type":"uint256","indexed":false,"internalType":"uint256"}],"anonymous":false},{"type":"event","name":"ModuleChanged","inputs":[{"name":"oldModule","type":"address","indexed":false,"internalType":"address"},{"name":"newModule","type":"address","indexed":false,"internalType":"address"}],"anonymous":false},{"type":"event","name":"OwnershipTransferStarted","inputs":[{"name":"previousOwner","type":"address","indexed":false,"internalType":"address"},{"name":"newOwner","type":"address","indexed":false,"internalType":"address"}],"anonymous":false},{"type":"event","name":"OwnershipTransferred","inputs":[{"name":"previousOwner","type":"address","indexed":false,"internalType":"address"},{"name":"newOwner","type":"address","indexed":false,"internalType":"address"}],"anonymous":false}];
 const ABI_RECOVERY = [{"type":"constructor","inputs":[{"name":"_owner","type":"address","internalType":"address"},{"name":"_migrationManager","type":"address","internalType":"address"},{"name":"_guardians","type":"address[]","internalType":"address[]"},{"name":"_requiredGuardians","type":"uint256","internalType":"uint256"},{"name":"_challengePeriod","type":"uint256","internalType":"uint256"}],"stateMutability":"nonpayable"},{"type":"function","name":"MAX_CHALLENGE_PERIOD","inputs":[],"outputs":[{"name":"","type":"uint256","internalType":"uint256"}],"stateMutability":"view"},{"type":"function","name":"MAX_GUARDIANS","inputs":[],"outputs":[{"name":"","type":"uint256","internalType":"uint256"}],"stateMutability":"view"},{"type":"function","name":"MIN_CHALLENGE_PERIOD","inputs":[],"outputs":[{"name":"","type":"uint256","internalType":"uint256"}],"stateMutability":"view"},{"type":"function","name":"MIN_GUARDIANS","inputs":[],"outputs":[{"name":"","type":"uint256","internalType":"uint256"}],"stateMutability":"view"},{"type":"function","name":"addGuardian","inputs":[{"name":"guardian","type":"address","internalType":"address"}],"outputs":[],"stateMutability":"nonpayable"},{"type":"function","name":"approveRecovery","inputs":[],"outputs":[],"stateMutability":"nonpayable"},{"type":"function","name":"cancelRecovery","inputs":[],"outputs":[],"stateMutability":"nonpayable"},{"type":"function","name":"challengePeriod","inputs":[],"outputs":[{"name":"","type":"uint256","internalType":"uint256"}],"stateMutability":"view"},{"type":"function","name":"executeRecovery","inputs":[],"outputs":[],"stateMutability":"nonpayable"},{"type":"function","name":"getGuardians","inputs":[],"outputs":[{"name":"","type":"address[]","internalType":"address[]"}],"stateMutability":"view"},{"type":"function","name":"guardians","inputs":[{"name":"","type":"uint256","internalType":"uint256"}],"outputs":[{"name":"","type":"address","internalType":"address"}],"stateMutability":"view"},{"type":"function","name":"initiateRecovery","inputs":[{"name":"_newOwner","type":"address","internalType":"address"},{"name":"_migrationTarget","type":"address","internalType":"address"}],"outputs":[],"stateMutability":"nonpayable"},{"type":"function","name":"isGuardian","inputs":[{"name":"guardian","type":"address","internalType":"address"}],"outputs":[{"name":"","type":"bool","internalType":"bool"}],"stateMutability":"view"},{"type":"function","name":"migrationManager","inputs":[],"outputs":[{"name":"","type":"address","internalType":"contract MigrationManagerLike"}],"stateMutability":"view"},{"type":"function","name":"owner","inputs":[],"outputs":[{"name":"","type":"address","internalType":"address"}],"stateMutability":"view"},{"type":"function","name":"removeGuardian","inputs":[{"name":"guardian","type":"address","internalType":"address"}],"outputs":[],"stateMutability":"nonpayable"},{"type":"function","name":"requiredGuardians","inputs":[],"outputs":[{"name":"","type":"uint256","internalType":"uint256"}],"stateMutability":"view"},{"type":"event","name":"GuardianAdded","inputs":[{"name":"guardian","type":"address","indexed":true,"internalType":"address"}],"anonymous":false},{"type":"event","name":"GuardianRemoved","inputs":[{"name":"guardian","type":"address","indexed":true,"internalType":"address"}],"anonymous":false},{"type":"event","name":"RecoveryApproved","inputs":[{"name":"approver","type":"address","indexed":true,"internalType":"address"}],"anonymous":false},{"type":"event","name":"RecoveryCancelled","inputs":[{"name":"reason","type":"string","indexed":false,"internalType":"string"}],"anonymous":false},{"type":"event","name":"RecoveryExecuted","inputs":[{"name":"oldOwner","type":"address","indexed":true,"internalType":"address"},{"name":"newOwner","type":"address","indexed":true,"internalType":"address"}],"anonymous":false},{"type":"event","name":"RecoveryInitiated","inputs":[{"name":"initiator","type":"address","indexed":true,"internalType":"address"},{"name":"newOwner","type":"address","indexed":true,"internalType":"address"},{"name":"deadline","type":"uint256","indexed":false,"internalType":"uint256"}],"anonymous":false}];
 const ABI_HASHMODULE = [{"type":"function","name":"HASH_SIZE","inputs":[],"outputs":[{"name":"","type":"uint256","internalType":"uint256"}],"stateMutability":"view"},{"type":"function","name":"MAX_LEAVES","inputs":[],"outputs":[{"name":"","type":"uint256","internalType":"uint256"}],"stateMutability":"view"},{"type":"function","name":"TREE_HEIGHT","inputs":[],"outputs":[{"name":"","type":"uint256","internalType":"uint256"}],"stateMutability":"view"},{"type":"function","name":"isQuantumResistant","inputs":[],"outputs":[{"name":"","type":"bool","internalType":"bool"}],"stateMutability":"pure"},{"type":"function","name":"merkleRoots","inputs":[{"name":"","type":"address","internalType":"address"}],"outputs":[{"name":"","type":"bytes32","internalType":"bytes32"}],"stateMutability":"view"},{"type":"function","name":"revokeMerkleRoot","inputs":[],"outputs":[],"stateMutability":"nonpayable"},{"type":"function","name":"schemeName","inputs":[],"outputs":[{"name":"","type":"string","internalType":"string"}],"stateMutability":"pure"},{"type":"function","name":"setMerkleRoot","inputs":[{"name":"root","type":"bytes32","internalType":"bytes32"}],"outputs":[],"stateMutability":"nonpayable"},{"type":"function","name":"usedLeaves","inputs":[{"name":"","type":"address","internalType":"address"},{"name":"","type":"uint256","internalType":"uint256"}],"outputs":[{"name":"","type":"bool","internalType":"bool"}],"stateMutability":"view"},{"type":"function","name":"verify","inputs":[{"name":"signer","type":"address","internalType":"address"},{"name":"digest","type":"bytes32","internalType":"bytes32"},{"name":"signature","type":"bytes","internalType":"bytes"}],"outputs":[{"name":"","type":"bool","internalType":"bool"}],"stateMutability":"view"},{"type":"event","name":"MerkleRootRevoked","inputs":[{"name":"account","type":"address","indexed":true,"internalType":"address"}],"anonymous":false},{"type":"event","name":"MerkleRootSet","inputs":[{"name":"account","type":"address","indexed":true,"internalType":"address"},{"name":"root","type":"bytes32","indexed":false,"internalType":"bytes32"}],"anonymous":false}];
-
-// ============================================================
-// Create Account (self-service deploy)
-// ============================================================
-const BYTECODE = {
-  MigrationManager: "0x6080604052346100305761001a610014610104565b9061031e565b610022610035565b611557610388823961155790f35b61003b565b60405190565b5f80fd5b601f801991011690565b634e487b7160e01b5f52604160045260245ffd5b906100679061003f565b810190811060018060401b0382111761007f57604052565b610049565b90610097610090610035565b928361005d565b565b5f80fd5b60018060a01b031690565b6100b19061009d565b90565b6100bd816100a8565b036100c457565b5f80fd5b905051906100d5826100b4565b565b91906040838203126100ff57806100f36100fc925f86016100c8565b936020016100c8565b90565b610099565b6101226118df8038038061011781610084565b9283398101906100d7565b9091565b90565b90565b61014061013b61014592610126565b610129565b61009d565b90565b6101519061012c565b90565b60209181520190565b5f7f4d6967726174696f6e4d616e616765723a20696e76616c6964206d6f64756c65910152565b61019060208092610154565b6101998161015d565b0190565b6101b29060208101905f818303910152610184565b90565b156101bc57565b6101c4610035565b62461bcd60e51b8152806101da6004820161019d565b0390fd5b5f7f4d6967726174696f6e4d616e616765723a20696e76616c6964206f776e657200910152565b610212601f602092610154565b61021b816101de565b0190565b6102349060208101905f818303910152610205565b90565b1561023e57565b610246610035565b62461bcd60e51b81528061025c6004820161021f565b0390fd5b61027461026f6102799261009d565b610129565b61009d565b90565b61028590610260565b90565b6102919061027c565b90565b5f1b90565b906102aa60018060a01b0391610294565b9181191691161790565b6102bd9061027c565b90565b90565b906102d86102d36102df926102b4565b6102c0565b8254610299565b9055565b6102ec90610260565b90565b6102f8906102e3565b90565b90565b9061031361030e61031a926102ef565b6102fb565b8254610299565b9055565b9061037e6103786103859361034e8161034761034161033c5f610148565b6100a8565b916100a8565b14156101b5565b6103738461036c6103666103615f610148565b6100a8565b916100a8565b1415610237565b610288565b5f6102c3565b60036102fe565b56fe60806040526004361015610013575b610677565b61001d5f356100ec565b806310639ea0146100e757806358c700a3146100e257806379ba5097146100dd5780638da5cb5b146100d8578063a415c02c146100d3578063ab8a2731146100ce578063afb32403146100c9578063b4c0bc44146100c4578063c10a2ca0146100bf578063c9d4693a146100ba578063d56ad7ac146100b5578063e30c3978146100b05763f2fde38b0361000e57610644565b6105f1565b6105ad565b610541565b61050d565b610461565b6103f3565b6103af565b6102e1565b610289565b6101dd565b6101a8565b610114565b60e01c90565b60405190565b5f80fd5b5f80fd5b5f91031261010a57565b6100fc565b5f0190565b3461014257610124366004610100565b61012c6109fc565b6101346100f2565b8061013e8161010f565b0390f35b6100f8565b1c90565b90565b61015e9060086101639302610147565b61014b565b90565b90610171915461014e565b90565b61018060025f90610166565b90565b90565b61018f90610183565b9052565b91906101a6905f60208501940190610186565b565b346101d8576101b8366004610100565b6101d46101c3610174565b6101cb6100f2565b91829182610193565b0390f35b6100f8565b3461020b576101ed366004610100565b6101f5610b2b565b6101fd6100f2565b806102078161010f565b0390f35b6100f8565b60018060a01b031690565b61022b9060086102309302610147565b610210565b90565b9061023e915461021b565b90565b61024d60035f90610233565b90565b60018060a01b031690565b61026490610250565b90565b6102709061025b565b9052565b9190610287905f60208501940190610267565b565b346102b957610299366004610100565b6102b56102a4610241565b6102ac6100f2565b91829182610274565b0390f35b6100f8565b9160206102df9294936102d860408201965f830190610267565b0190610186565b565b34610312576102f1366004610100565b6102f9610c44565b9061030e6103056100f2565b928392836102be565b0390f35b6100f8565b60018060a01b031690565b6103329060086103379302610147565b610317565b90565b906103459154610322565b90565b6103535f5f9061033a565b90565b90565b61036d61036861037292610250565b610356565b610250565b90565b61037e90610359565b90565b61038a90610375565b90565b61039690610381565b9052565b91906103ad905f6020850194019061038d565b565b346103df576103bf366004610100565b6103db6103ca610348565b6103d26100f2565b9182918261039a565b0390f35b6100f8565b6103f060015f9061033a565b90565b3461042357610403366004610100565b61041f61040e6103e4565b6104166100f2565b9182918261039a565b0390f35b6100f8565b90565b61043f61043a61044492610428565b610356565b610183565b90565b6104536276a70061042b565b90565b61045e610447565b90565b3461049157610471366004610100565b61048d61047c610456565b6104846100f2565b91829182610193565b0390f35b6100f8565b5f80fd5b6104a38161025b565b036104aa57565b5f80fd5b905035906104bb8261049a565b565b6104c681610183565b036104cd57565b5f80fd5b905035906104de826104bd565b565b919060408382031261050857806104fc610505925f86016104ae565b936020016104d1565b90565b6100fc565b3461053c576105266105203660046104e0565b90611238565b61052e6100f2565b806105388161010f565b0390f35b6100f8565b3461056f57610551366004610100565b6105596112ec565b6105616100f2565b8061056b8161010f565b0390f35b6100f8565b90565b61058b61058661059092610574565b610356565b610183565b90565b61059f62093a80610577565b90565b6105aa610593565b90565b346105dd576105bd366004610100565b6105d96105c86105a2565b6105d06100f2565b91829182610193565b0390f35b6100f8565b6105ee60045f90610233565b90565b3461062157610601366004610100565b61061d61060c6105e2565b6106146100f2565b91829182610274565b0390f35b6100f8565b9060208282031261063f5761063c915f016104ae565b90565b6100fc565b346106725761065c610657366004610626565b611516565b6106646100f2565b8061066e8161010f565b0390f35b6100f8565b5f80fd5b5f1c90565b61068c6106919161067b565b610210565b90565b61069e9054610680565b90565b60209181520190565b5f7f4d6967726174696f6e4d616e616765723a206e6f74206f776e65720000000000910152565b6106de601b6020926106a1565b6106e7816106aa565b0190565b6107009060208101905f8183039101526106d1565b90565b1561070a57565b6107126100f2565b62461bcd60e51b815280610728600482016106eb565b0390fd5b6107513361074b6107456107406003610694565b61025b565b9161025b565b14610703565b61075961095c565b565b61076761076c9161067b565b610317565b90565b610779905461075b565b90565b90565b61079361078e6107989261077c565b610356565b610250565b90565b6107a49061077f565b90565b60207f726174696f6e0000000000000000000000000000000000000000000000000000917f4d6967726174696f6e4d616e616765723a206e6f2070656e64696e67206d69675f8201520152565b61080160266040926106a1565b61080a816107a7565b0190565b6108239060208101905f8183039101526107f4565b90565b1561082d57565b6108356100f2565b62461bcd60e51b81528061084b6004820161080e565b0390fd5b1b90565b9190600861087391029161086d60018060a01b038461084f565b9261084f565b9181191691161790565b61088690610359565b90565b6108929061087d565b90565b90565b91906108ae6108a96108b693610889565b610895565b908354610853565b9055565b5f90565b6108d0916108ca6108ba565b91610898565b565b919060086108ed9102916108e75f198461084f565b9261084f565b9181191691161790565b61090b61090661091092610183565b610356565b610183565b90565b90565b919061092c610927610934936108f7565b610913565b9083546108d2565b9055565b5f90565b61094e91610948610938565b91610916565b565b61095990610375565b90565b61099261097161096c600161076f565b610381565b61098b6109856109805f61079b565b61025b565b9161025b565b1415610826565b6109a461099f600161076f565b610381565b6109af5f60016108be565b6109ba5f600261093c565b6109e47f7c7cf105c6d2d5b006d910653c90e1ddef1597f52e08f86f4a8aad4e5bdf255e91610950565b906109ed6100f2565b806109f78161010f565b0390a2565b610a0461072c565b565b60207f6e65720000000000000000000000000000000000000000000000000000000000917f4d6967726174696f6e4d616e616765723a206e6f742070656e64696e67206f775f8201520152565b610a6060236040926106a1565b610a6981610a06565b0190565b610a829060208101905f818303910152610a53565b90565b15610a8c57565b610a946100f2565b62461bcd60e51b815280610aaa60048201610a6d565b0390fd5b5f1b90565b90610ac460018060a01b0391610aae565b9181191691161790565b90565b90610ae6610ae1610aed92610950565b610ace565b8254610ab3565b9055565b9190610b07610b02610b0f93610950565b610ace565b908354610853565b9055565b5f90565b610b2991610b23610b13565b91610af1565b565b610b5033610b4a610b44610b3f6004610694565b61025b565b9161025b565b14610a85565b610b5a6003610694565b610b646004610694565b610b97610b917f8be0079c531659141344cd1fd0a4f28419497f9722a3daafe3b4186f6b6457e093610950565b91610950565b91610ba06100f2565b80610baa8161010f565b0390a3610bc1610bba6004610694565b6003610ad1565b610bcc5f6004610b17565b565b610be2610bdd610be79261077c565b610356565b610183565b90565b610bf6610bfb9161067b565b61014b565b90565b610c089054610bea565b90565b634e487b7160e01b5f52601160045260245ffd5b610c2e610c3491939293610183565b92610183565b8203918211610c3f57565b610c0b565b610c4c610b13565b50610c55610938565b50610c68610c63600161076f565b610381565b610c82610c7c610c775f61079b565b61025b565b9161025b565b14610cf25742610ca3610c9d610c986002610bfe565b610183565b91610183565b1015610cd357610cbb610cb6600161076f565b610381565b90610cd0610cc96002610bfe565b4290610c1f565b90565b610ce5610ce0600161076f565b610381565b90610cef5f610bce565b90565b610cfb5f61079b565b90610d055f610bce565b90565b90610d3791610d3233610d2c610d26610d216003610694565b61025b565b9161025b565b14610703565b6110a8565b565b5f7f4d6967726174696f6e4d616e616765723a20696e76616c6964206d6f64756c65910152565b610d6c602080926106a1565b610d7581610d39565b0190565b610d8e9060208101905f818303910152610d60565b90565b15610d9857565b610da06100f2565b62461bcd60e51b815280610db660048201610d79565b0390fd5b5f7f4d6967726174696f6e4d616e616765723a20696e76616c69642064656c617900910152565b610dee601f6020926106a1565b610df781610dba565b0190565b610e109060208101905f818303910152610de1565b90565b15610e1a57565b610e226100f2565b62461bcd60e51b815280610e3860048201610dfb565b0390fd5b610e459061087d565b90565b601f801991011690565b634e487b7160e01b5f52604160045260245ffd5b90610e7090610e48565b810190811067ffffffffffffffff821117610e8a57604052565b610e52565b60e01b90565b5f80fd5b5f80fd5b90610eb0610ea96100f2565b9283610e66565b565b67ffffffffffffffff8111610ed057610ecc602091610e48565b0190565b610e52565b90825f9392825e0152565b90929192610ef5610ef082610eb2565b610e9d565b93818552602085019082840111610f1157610f0f92610ed5565b565b610e99565b9080601f83011215610f3457816020610f3193519101610ee0565b90565b610e95565b90602082820312610f69575f82015167ffffffffffffffff8111610f6457610f619201610f16565b90565b610496565b6100fc565b610f766100f2565b3d5f823e3d90fd5b90565b5190565b60207f64756c6500000000000000000000000000000000000000000000000000000000917f4d6967726174696f6e4d616e616765723a206e6f7420612076616c6964206d6f5f8201520152565b610fdf60246040926106a1565b610fe881610f85565b0190565b6110019060208101905f818303910152610fd2565b90565b1561100b57565b6110136100f2565b62461bcd60e51b81528061102960048201610fec565b0390fd5b9061104261103d61104992610889565b610895565b8254610ab3565b9055565b61105c61106291939293610183565b92610183565b820180921161106d57565b610c0b565b9061107e5f1991610aae565b9181191691161790565b9061109d6110986110a4926108f7565b610913565b8254611072565b9055565b90611125906110d2836110cb6110c56110c05f61079b565b61025b565b9161025b565b1415610d91565b806110ec6110e66110e1610593565b610183565b91610183565b101580611211575b6110fd90610e13565b5f61110f61110a85610e3c565b610381565b63c45ff2819061111d6100f2565b948592610e8f565b825281806111356004820161010f565b03915afa90811561120c5761117b61116361115e6111949461119b965f916111ea575b50610f7e565b610f81565b61117561116f5f610bce565b91610183565b11611004565b61118e61118785610e3c565b600161102d565b4261104d565b6002611088565b6111a56002610bfe565b906111e56111d37ffbf126b8a95ec693e692437a9297a98deec1cfb822b8c650b7d346461efdb2ad92610950565b926111dc6100f2565b91829182610193565b0390a2565b61120691503d805f833e6111fe8183610e66565b810190610f39565b5f611158565b610f6e565b506110fd8161122f611229611224610447565b610183565b91610183565b111590506110f4565b9061124291610d08565b565b60207f7870697265640000000000000000000000000000000000000000000000000000917f4d6967726174696f6e4d616e616765723a2074696d656c6f636b206e6f7420655f8201520152565b61129e60266040926106a1565b6112a781611244565b0190565b6112c09060208101905f818303910152611291565b90565b156112ca57565b6112d26100f2565b62461bcd60e51b8152806112e8600482016112ab565b0390fd5b6113226113016112fc600161076f565b610381565b61131b6113156113105f61079b565b61025b565b9161025b565b1415610826565b6113484261134161133b6113366002610bfe565b610183565b91610183565b10156112c3565b6113596113545f61076f565b610381565b61136c611366600161076f565b5f61102d565b6113775f60016108be565b6113825f600261093c565b61139361138e5f61076f565b610381565b6113c66113c07f6af262ca96275dc40852dc5ae38406689d6f49c801c16c17cb6c84f103052fc393610950565b91610950565b916113cf6100f2565b806113d98161010f565b0390a3565b61140c90611407336114016113fb6113f66003610694565b61025b565b9161025b565b14610703565b611490565b565b5f7f4d6967726174696f6e4d616e616765723a20696e76616c6964206f776e657200910152565b611442601f6020926106a1565b61144b8161140e565b0190565b6114649060208101905f818303910152611435565b90565b1561146e57565b6114766100f2565b62461bcd60e51b81528061148c6004820161144f565b0390fd5b6114b5816114ae6114a86114a35f61079b565b61025b565b9161025b565b1415611467565b6114c0816004610ad1565b6114ca6003610694565b906114fe6114f87f38d16b8cac22d99fc7c124b9cd0de2d3fa1faef420bfe791d8c362d765e2270093610950565b91610950565b916115076100f2565b806115118161010f565b0390a3565b61151f906113de565b56fea2646970667358221220b221054f916fefd6252192cc97277b69b6baa697e665d4f54383d2e9fdd3734464736f6c634300081c0033",
-  RecoveryManager: "0x6080604052346100335761001d61001461020d565b939290926106c8565b610025610038565b611f6c610d4c8239611f6c90f35b61003e565b60405190565b5f80fd5b601f801991011690565b634e487b7160e01b5f52604160045260245ffd5b9061006a90610042565b810190811060018060401b0382111761008257604052565b61004c565b9061009a610093610038565b9283610060565b565b5f80fd5b5f80fd5b60018060a01b031690565b6100b8906100a4565b90565b6100c4816100af565b036100cb57565b5f80fd5b905051906100dc826100bb565b565b5f80fd5b60018060401b0381116100f85760208091020190565b61004c565b5f80fd5b90929192610116610111826100e2565b610087565b938185526020808601920283019281841161015357915b83831061013a5750505050565b6020809161014884866100cf565b81520192019161012d565b6100fd565b9080601f830112156101765781602061017393519101610101565b90565b6100de565b90565b6101878161017b565b0361018e57565b5f80fd5b9050519061019f8261017e565b565b919060a083820312610208576101b9815f85016100cf565b926101c782602083016100cf565b92604082015160018060401b038111610203576101e984610200928501610158565b936101f78160608601610192565b93608001610192565b90565b6100a0565b61009c565b61022b612cb88038038061022081610087565b9283398101906101a1565b9091929394565b90565b90565b61024c61024761025192610232565b610235565b6100a4565b90565b61025d90610238565b90565b60209181520190565b5f7f5265636f766572794d616e616765723a20696e76616c6964206f776e65720000910152565b61029d601e602092610260565b6102a681610269565b0190565b6102bf9060208101905f818303910152610290565b90565b156102c957565b6102d1610038565b62461bcd60e51b8152806102e7600482016102aa565b0390fd5b5f7f5265636f766572794d616e616765723a20696e76616c6964206d677200000000910152565b61031f601c602092610260565b610328816102eb565b0190565b6103419060208101905f818303910152610312565b90565b1561034b57565b610353610038565b62461bcd60e51b8152806103696004820161032c565b0390fd5b90565b61038461037f6103899261036d565b610235565b61017b565b90565b6103966002610370565b90565b5190565b60207f6c64000000000000000000000000000000000000000000000000000000000000917f5265636f766572794d616e616765723a20696e76616c6964207468726573686f5f8201520152565b6103f76022604092610260565b6104008161039d565b0190565b6104199060208101905f8183039101526103ea565b90565b1561042357565b61042b610038565b62461bcd60e51b81528061044160048201610404565b0390fd5b90565b61045c61045761046192610445565b610235565b61017b565b90565b6104706202a300610448565b90565b90565b61048a61048561048f92610473565b610235565b61017b565b90565b61049e62278d00610476565b90565b60207f676520706572696f640000000000000000000000000000000000000000000000917f5265636f766572794d616e616765723a20696e76616c6964206368616c6c656e5f8201520152565b6104fb6029604092610260565b610504816104a1565b0190565b61051d9060208101905f8183039101526104ee565b90565b1561052757565b61052f610038565b62461bcd60e51b81528061054560048201610508565b0390fd5b5f1b90565b9061055f60018060a01b0391610549565b9181191691161790565b61057d610578610582926100a4565b610235565b6100a4565b90565b61058e90610569565b90565b61059a90610585565b90565b90565b906105b56105b06105bc92610591565b61059d565b825461054e565b9055565b6105c990610569565b90565b6105d5906105c0565b90565b6105e1906105c0565b90565b90565b906105fc6105f7610603926105d8565b6105e4565b825461054e565b9055565b906106135f1991610549565b9181191691161790565b61063161062c6106369261017b565b610235565b61017b565b90565b90565b9061065161064c6106589261061d565b610639565b8254610607565b9055565b61067061066b61067592610232565b610235565b61017b565b90565b6001610684910161017b565b90565b634e487b7160e01b5f52603260045260245ffd5b906106a582610399565b8110156106b6576020809102010190565b610687565b6106c590516100af565b90565b926107906107896107979361078461079e9799989699610703816106fc6106f66106f15f610254565b6100af565b916100af565b14156102c2565b6107288361072161071b6107165f610254565b6100af565b916100af565b1415610344565b8561074261073c61073761038c565b61017b565b9161017b565b10158061081e575b6107539061041c565b8761076d610767610762610464565b61017b565b9161017b565b1015806107f7575b61077e90610520565b5f6105a0565b6105cc565b60016105e7565b600461063c565b600561063c565b6107a75f61065c565b5b806107c36107bd6107b886610399565b61017b565b9161017b565b10156107f2576107ed906107e86107e36107de86849061069b565b6106bb565b610c44565b610678565b6107a8565b509050565b5061077e8861081561080f61080a610492565b61017b565b9161017b565b11159050610775565b506107538b61083e6108386108338a93610399565b61017b565b9161017b565b1115905061074a565b5f7f5265636f766572794d616e616765723a20696e76616c69642061646472657373910152565b61087a60208092610260565b61088381610847565b0190565b61089c9060208101905f81830391015261086e565b90565b156108a657565b6108ae610038565b62461bcd60e51b8152806108c460048201610887565b0390fd5b5f1c90565b60018060a01b031690565b6108e46108e9916108c8565b6108cd565b90565b6108f690546108d8565b90565b60207f20677561726469616e0000000000000000000000000000000000000000000000917f5265636f766572794d616e616765723a206f776e65722063616e6e6f742062655f8201520152565b6109536029604092610260565b61095c816108f9565b0190565b6109759060208101905f818303910152610946565b90565b1561097f57565b610987610038565b62461bcd60e51b81528061099d60048201610960565b0390fd5b906109ab90610591565b5f5260205260405f2090565b60ff1690565b6109c96109ce916108c8565b6109b7565b90565b6109db90546109bd565b90565b151590565b60207f6e00000000000000000000000000000000000000000000000000000000000000917f5265636f766572794d616e616765723a20616c726561647920677561726469615f8201520152565b610a3d6021604092610260565b610a46816109e3565b0190565b610a5f9060208101905f818303910152610a30565b90565b15610a6957565b610a71610038565b62461bcd60e51b815280610a8760048201610a4a565b0390fd5b5490565b90565b610aa6610aa1610aab92610a8f565b610235565b61017b565b90565b610ab8600a610a92565b90565b5f7f5265636f766572794d616e616765723a206d617820677561726469616e730000910152565b610aef601e602092610260565b610af881610abb565b0190565b610b119060208101905f818303910152610ae2565b90565b15610b1b57565b610b23610038565b62461bcd60e51b815280610b3960048201610afc565b0390fd5b90610b4960ff91610549565b9181191691161790565b610b5c906109de565b90565b90565b90610b77610b72610b7e92610b53565b610b5f565b8254610b3d565b9055565b90565b5f5260205f2090565b5490565b610b9b81610b8e565b821015610bb557610bad600191610b85565b910201905f90565b610687565b1b90565b91906008610bde910291610bd860018060a01b0384610bba565b92610bba565b9181191691161790565b9190610bfe610bf9610c0693610591565b61059d565b908354610bbe565b9055565b9081549168010000000000000000831015610c3a5782610c32916001610c3895018155610b92565b90610be8565b565b61004c565b5f0190565b610c6981610c62610c5c610c575f610254565b6100af565b916100af565b141561089f565b610c8e81610c87610c81610c7c5f6108ec565b6100af565b916100af565b1415610978565b610cb3610cae610ca8610ca3600285906109a1565b6109d1565b156109de565b610a62565b610cdf610cc06003610a8b565b610cd9610cd3610cce610aae565b61017b565b9161017b565b10610b14565b610cf56001610cf0600284906109a1565b610b62565b610d09610d026003610b82565b8290610c0a565b610d337f038596bb31e2e7d3d9f184d4c98b310103f6d7f5830e5eec32bffe6f1728f96991610591565b90610d3c610038565b80610d4681610c3f565b0390a256fe60806040526004361015610013575b610980565b61001d5f3561012c565b80630665f04b146101275780630ba234d6146101225780630c68ba211461011d578063156ed7e914610118578063187ac4cb1461011357806320c5a3e11461010e578063422c1d3714610109578063615795361461010457806371404156146100ff57806380c1e706146100fa5780638da5cb5b146100f5578063a526d83b146100f0578063a52d92cf146100eb578063f3f480d9146100e6578063f560c734146100e1578063f91b0432146100dc5763fcae8d380361000e5761094d565b610918565b6108ac565b6107c1565b61077e565b61071e565b6106e9565b610653565b6105e7565b6105b2565b610545565b6104db565b6104a6565b610403565b610370565b61023f565b610205565b60e01c90565b60405190565b5f80fd5b5f80fd5b5f91031261014a57565b61013c565b5190565b60209181520190565b60200190565b60018060a01b031690565b61017690610162565b90565b6101829061016d565b9052565b9061019381602093610179565b0190565b60200190565b906101ba6101b46101ad8461014f565b8093610153565b9261015c565b905f5b8181106101ca5750505090565b9091926101e36101dd6001928651610186565b94610197565b91019190916101bd565b6102029160208201915f81840391015261019d565b90565b3461023557610215366004610140565b610231610220610a97565b610228610132565b918291826101ed565b0390f35b610138565b5f0190565b3461026d5761024f366004610140565b610257610cf6565b61025f610132565b806102698161023a565b0390f35b610138565b61027b8161016d565b0361028257565b5f80fd5b9050359061029382610272565b565b906020828203126102ae576102ab915f01610286565b90565b61013c565b90565b6102ca6102c56102cf92610162565b6102b3565b610162565b90565b6102db906102b6565b90565b6102e7906102d2565b90565b906102f4906102de565b5f5260205260405f2090565b1c90565b60ff1690565b61031a90600861031f9302610300565b610304565b90565b9061032d915461030a565b90565b610346906103416002915f926102ea565b610322565b90565b151590565b61035790610349565b9052565b919061036e905f6020850194019061034e565b565b346103a05761039c61038b610386366004610295565b610330565b610393610132565b9182918261035b565b0390f35b610138565b90565b90565b6103bf6103ba6103c4926103a5565b6102b3565b6103a8565b90565b6103d36202a3006103ab565b90565b6103de6103c7565b90565b6103ea906103a8565b9052565b9190610401905f602085019401906103e1565b565b3461043357610413366004610140565b61042f61041e6103d6565b610426610132565b918291826103ee565b0390f35b610138565b60018060a01b031690565b6104539060086104589302610300565b610438565b90565b906104669154610443565b90565b61047560015f9061045b565b90565b610481906102d2565b90565b61048d90610478565b9052565b91906104a4905f60208501940190610484565b565b346104d6576104b6366004610140565b6104d26104c1610469565b6104c9610132565b91829182610491565b0390f35b610138565b34610509576104eb366004610140565b6104f3610f16565b6104fb610132565b806105058161023a565b0390f35b610138565b90565b61052561052061052a9261050e565b6102b3565b6103a8565b90565b610537600a610511565b90565b61054261052d565b90565b3461057557610555366004610140565b61057161056061053a565b610568610132565b918291826103ee565b0390f35b610138565b90565b61058d9060086105929302610300565b61057a565b90565b906105a0915461057d565b90565b6105af60045f90610595565b90565b346105e2576105c2366004610140565b6105de6105cd6105a3565b6105d5610132565b918291826103ee565b0390f35b610138565b34610615576105ff6105fa366004610295565b611497565b610607610132565b806106118161023a565b0390f35b610138565b90565b61063161062c6106369261061a565b6102b3565b6103a8565b90565b61064562278d0061061d565b90565b610650610639565b90565b3461068357610663366004610140565b61067f61066e610648565b610676610132565b918291826103ee565b0390f35b610138565b60018060a01b031690565b6106a39060086106a89302610300565b610688565b90565b906106b69154610693565b90565b6106c45f5f906106ab565b90565b6106d09061016d565b9052565b91906106e7905f602085019401906106c7565b565b34610719576106f9366004610140565b6107156107046106b9565b61070c610132565b918291826106d4565b0390f35b610138565b3461074c57610736610731366004610295565b6114dc565b61073e610132565b806107488161023a565b0390f35b610138565b9190604083820312610779578061076d610776925f8601610286565b93602001610286565b90565b61013c565b346107ad57610797610791366004610751565b9061174b565b61079f610132565b806107a98161023a565b0390f35b610138565b6107be60055f90610595565b90565b346107f1576107d1366004610140565b6107ed6107dc6107b2565b6107e4610132565b918291826103ee565b0390f35b610138565b6107ff816103a8565b0361080657565b5f80fd5b90503590610817826107f6565b565b906020828203126108325761082f915f0161080a565b90565b61013c565b634e487b7160e01b5f52603260045260245ffd5b5490565b5f5260205f2090565b6108618161084b565b82101561087b5761087360019161084f565b910201905f90565b610837565b600361088b8161084b565b8210156108a8576108a59161089f91610858565b906106ab565b90565b5f80fd5b346108dc576108d86108c76108c2366004610819565b610880565b6108cf610132565b918291826106d4565b0390f35b610138565b90565b6108f86108f36108fd926108e1565b6102b3565b6103a8565b90565b61090a60026108e4565b90565b610915610900565b90565b3461094857610928366004610140565b61094461093361090d565b61093b610132565b918291826103ee565b0390f35b610138565b3461097b5761095d366004610140565b610965611958565b61096d610132565b806109778161023a565b0390f35b610138565b5f80fd5b606090565b60209181520190565b5f1c90565b6109a36109a891610992565b610688565b90565b6109b59054610997565b90565b60010190565b906109db6109d56109ce8461084b565b8093610989565b9261084f565b905f5b8181106109eb5750505090565b909192610a0b610a05600192610a00876109ab565b610186565b946109b8565b91019190916109de565b90610a1f916109be565b90565b601f801991011690565b634e487b7160e01b5f52604160045260245ffd5b90610a4a90610a22565b810190811067ffffffffffffffff821117610a6457604052565b610a2c565b90610a89610a8292610a79610132565b93848092610a15565b0383610a40565b565b610a9490610a69565b90565b610a9f610984565b50610aaa6003610a8b565b90565b610ab9610abe91610992565b610304565b90565b610acb9054610aad565b90565b60209181520190565b60207f6572790000000000000000000000000000000000000000000000000000000000917f5265636f766572794d616e616765723a206e6f20616374697665207265636f765f8201520152565b610b316023604092610ace565b610b3a81610ad7565b0190565b610b539060208101905f818303910152610b24565b90565b15610b5d57565b610b65610132565b62461bcd60e51b815280610b7b60048201610b3e565b0390fd5b610b899054610997565b90565b610b98610b9d91610992565b61057a565b90565b610baa9054610b8c565b90565b634e487b7160e01b5f52601160045260245ffd5b610bd0610bd6919392936103a8565b926103a8565b91610be28382026103a8565b928184041490151715610bf157565b610bad565b610c05610c0b919392936103a8565b926103a8565b8201809211610c1657565b610bad565b5f7f5265636f766572794d616e616765723a2063616e6e6f742063616e63656c0000910152565b610c4f601e602092610ace565b610c5881610c1b565b0190565b610c719060208101905f818303910152610c42565b90565b15610c7b57565b610c83610132565b62461bcd60e51b815280610c9960048201610c5c565b0390fd5b5f7f63616e63656c6c6564206279206f776e65720000000000000000000000000000910152565b610cd16012602092610ace565b610cda81610c9d565b0190565b610cf39060208101905f818303910152610cc4565b90565b610d08610d03600c610ac1565b610b56565b33610d23610d1d610d185f610b7f565b61016d565b9161016d565b148015610d74575b610d3490610c74565b610d3c611aa5565b7fc8f0068125c5f5446ea8c0b34b10079f9a62cde786910361805792e5fd75d13f610d65610132565b80610d6f81610cde565b0390a1565b50610d3442610dbd610db7610db2610d8f6002600601610ba0565b610dac610d9c6005610ba0565b610da660026108e4565b90610bc1565b90610bf6565b6103a8565b916103a8565b10159050610d2b565b60207f6f76616c73000000000000000000000000000000000000000000000000000000917f5265636f766572794d616e616765723a206e6f7420656e6f75676820617070725f8201520152565b610e206025604092610ace565b610e2981610dc6565b0190565b610e429060208101905f818303910152610e13565b90565b15610e4c57565b610e54610132565b62461bcd60e51b815280610e6a60048201610e2d565b0390fd5b60207f64206e6f74207061737365640000000000000000000000000000000000000000917f5265636f766572794d616e616765723a206368616c6c656e676520706572696f5f8201520152565b610ec8602c604092610ace565b610ed181610e6e565b0190565b610eea9060208101905f818303910152610ebb565b90565b15610ef457565b610efc610132565b62461bcd60e51b815280610f1260048201610ed5565b0390fd5b610f28610f23600c610ac1565b610b56565b610f5a610f386003600601610ba0565b610f53610f4d610f486004610ba0565b6103a8565b916103a8565b1015610e45565b610f9642610f8f610f89610f84610f746002600601610ba0565b610f7e6005610ba0565b90610bf6565b6103a8565b916103a8565b1015610eed565b610f9e611b09565b565b5f7f5265636f766572794d616e616765723a206e6f74206f776e6572000000000000910152565b610fd4601a602092610ace565b610fdd81610fa0565b0190565b610ff69060208101905f818303910152610fc7565b90565b1561100057565b611008610132565b62461bcd60e51b81528061101e60048201610fe1565b0390fd5b61104f9061104a3361104461103e6110395f610b7f565b61016d565b9161016d565b14610ff9565b61131d565b565b5f7f5265636f766572794d616e616765723a206e6f74206120677561726469616e00910152565b611085601f602092610ace565b61108e81611051565b0190565b6110a79060208101905f818303910152611078565b90565b156110b157565b6110b9610132565b62461bcd60e51b8152806110cf60048201611092565b0390fd5b90565b6110ea6110e56110ef926110d3565b6102b3565b6103a8565b90565b611101611107919392936103a8565b926103a8565b820391821161111257565b610bad565b60207f726573686f6c6400000000000000000000000000000000000000000000000000917f5265636f766572794d616e616765723a20776f756c64206272656163682074685f8201520152565b6111716027604092610ace565b61117a81611117565b0190565b6111939060208101905f818303910152611164565b90565b1561119d57565b6111a5610132565b62461bcd60e51b8152806111bb6004820161117e565b0390fd5b5f1b90565b906111d060ff916111bf565b9181191691161790565b6111e390610349565b90565b90565b906111fe6111f9611205926111da565b6111e6565b82546111c4565b9055565b90565b61122061121b61122592611209565b6102b3565b6103a8565b90565b600161123491016103a8565b90565b1b90565b9190600861125b91029161125560018060a01b0384611237565b92611237565b9181191691161790565b90565b919061127e611279611286936102de565b611265565b90835461123b565b9055565b90565b634e487b7160e01b5f52603160045260245ffd5b5490565b5f5260205f2090565b6112b7816112a1565b8210156112d1576112c96001916112a5565b910201905f90565b610837565b5f90565b6112ec916112e66112d6565b91611268565b565b6112f7816112a1565b801561131857600190039061131561130f83836112ae565b906112da565b55565b61128d565b61133961133461132f600284906102ea565b610ac1565b6110aa565b61137b611359611349600361084b565b61135360016110d6565b906110f2565b61137461136e6113696004610ba0565b6103a8565b916103a8565b1015611196565b6113905f61138b600284906102ea565b6111e9565b6113995f61120c565b5b806113b66113b06113ab600361084b565b6103a8565b916103a8565b1015611491576113d16113cb60038390610858565b906106ab565b6113e36113dd8461016d565b9161016d565b146113f6576113f190611228565b61139a565b61143c9061143661142e6114286003611422611412600361084b565b61141c60016110d6565b906110f2565b90610858565b906106ab565b916003610858565b90611268565b61144e611449600361128a565b6112ee565b5b6114797fb8107d0c6b40be480ce3172ee66ba6d64b71f6b1685a851340036e6e2e3e3c52916102de565b90611482610132565b8061148c8161023a565b0390a2565b5061144f565b6114a090611022565b565b6114cf906114ca336114c46114be6114b95f610b7f565b61016d565b9161016d565b14610ff9565b6114d1565b565b6114da90611e2f565b565b6114e5906114a2565b565b6114fb6114f661150092611209565b6102b3565b610162565b90565b61150c906114e7565b90565b5f7f5265636f766572794d616e616765723a20696e76616c6964206f776e65720000910152565b611543601e602092610ace565b61154c8161150f565b0190565b6115659060208101905f818303910152611536565b90565b1561156f57565b611577610132565b62461bcd60e51b81528061158d60048201611550565b0390fd5b60207f7920616374697665000000000000000000000000000000000000000000000000917f5265636f766572794d616e616765723a207265636f7665727920616c726561645f8201520152565b6115eb6028604092610ace565b6115f481611591565b0190565b61160d9060208101905f8183039101526115de565b90565b1561161757565b61161f610132565b62461bcd60e51b815280611635600482016115f8565b0390fd5b5f7f5265636f766572794d616e616765723a2073616d65206f776e65720000000000910152565b61166d601b602092610ace565b61167681611639565b0190565b61168f9060208101905f818303910152611660565b90565b1561169957565b6116a1610132565b62461bcd60e51b8152806116b76004820161167a565b0390fd5b906116cc60018060a01b03916111bf565b9181191691161790565b906116eb6116e66116f2926102de565b611265565b82546116bb565b9055565b906117025f19916111bf565b9181191691161790565b61172061171b611725926103a8565b6102b3565b6103a8565b90565b90565b9061174061173b6117479261170c565b611728565b82546116f6565b9055565b61176761176261175d600233906102ea565b610ac1565b6110aa565b61178c8161178561177f61177a5f611503565b61016d565b9161016d565b1415611568565b6117a76117a261179c600c610ac1565b15610349565b611610565b6117cc816117c56117bf6117ba5f610b7f565b61016d565b9161016d565b1415611692565b6117d86001600c6111e9565b6117e5815f6006016116d6565b6117f38260016006016116d6565b61180142600260060161172b565b61181861180e60016110d6565b600360060161172b565b611831600161182c600460060133906102ea565b6111e9565b90611846426118406005610ba0565b90610bf6565b9161188f61187d6118777fe290ea2cc3cfeb5114f992dc8be9e503de30042c13b9298644a2679b09e17a04936102de565b936102de565b93611886610132565b918291826103ee565b0390a3565b60207f6400000000000000000000000000000000000000000000000000000000000000917f5265636f766572794d616e616765723a20616c726561647920617070726f76655f8201520152565b6118ee6021604092610ace565b6118f781611894565b0190565b6119109060208101905f8183039101526118e1565b90565b1561191a57565b611922610132565b62461bcd60e51b815280611938600482016118fb565b0390fd5b611945906103a8565b5f1981146119535760010190565b610bad565b61196a611965600c610ac1565b610b56565b61198661198161197c600233906102ea565b610ac1565b6110aa565b6119ae6119a96119a361199e600460060133906102ea565b610ac1565b15610349565b611913565b6119c760016119c2600460060133906102ea565b6111e9565b6119e660036006016119e06119db82610ba0565b61193c565b9061172b565b33611a117f47032c9dbd3001ab3b46aa359314884f3f192d251eda3b26f0be4cffd76d39c5916102de565b90611a1a610132565b80611a248161023a565b0390a2611a346003600601610ba0565b611a4f611a49611a446004610ba0565b6103a8565b916103a8565b101580611a6b575b611a5e575b565b611a66611b09565b611a5c565b5042611a9e611a98611a93611a836002600601610ba0565b611a8d6005610ba0565b90610bf6565b6103a8565b916103a8565b1015611a57565b611ab05f600c6111e9565b611ac5611abc5f611503565b5f6006016116d6565b611adb611ad15f611503565b60016006016116d6565b611af1611ae75f61120c565b600260060161172b565b611b07611afd5f61120c565b600360060161172b565b565b611b155f600601610b7f565b611b226001600601610b7f565b90611b2d815f6116d6565b81611b48611b42611b3d5f611503565b61016d565b9161016d565b03611ba2575b90611b82611b7c7f60f9f98be64687700419cfa6fdd7877bc88c6daeb10bc664a2be9fdd6b0c7921936102de565b916102de565b91611b8b610132565b80611b958161023a565b0390a3611ba0611aa5565b565b611b4e565b5f7f5265636f766572794d616e616765723a20696e76616c69642061646472657373910152565b611bda60208092610ace565b611be381611ba7565b0190565b611bfc9060208101905f818303910152611bce565b90565b15611c0657565b611c0e610132565b62461bcd60e51b815280611c2460048201611be7565b0390fd5b60207f20677561726469616e0000000000000000000000000000000000000000000000917f5265636f766572794d616e616765723a206f776e65722063616e6e6f742062655f8201520152565b611c826029604092610ace565b611c8b81611c28565b0190565b611ca49060208101905f818303910152611c75565b90565b15611cae57565b611cb6610132565b62461bcd60e51b815280611ccc60048201611c8f565b0390fd5b60207f6e00000000000000000000000000000000000000000000000000000000000000917f5265636f766572794d616e616765723a20616c726561647920677561726469615f8201520152565b611d2a6021604092610ace565b611d3381611cd0565b0190565b611d4c9060208101905f818303910152611d1d565b90565b15611d5657565b611d5e610132565b62461bcd60e51b815280611d7460048201611d37565b0390fd5b5f7f5265636f766572794d616e616765723a206d617820677561726469616e730000910152565b611dac601e602092610ace565b611db581611d78565b0190565b611dce9060208101905f818303910152611d9f565b90565b15611dd857565b611de0610132565b62461bcd60e51b815280611df660048201611db9565b0390fd5b9081549168010000000000000000831015611e2a5782611e22916001611e28950181556112ae565b90611268565b565b610a2c565b611e5481611e4d611e47611e425f611503565b61016d565b9161016d565b1415611bff565b611e7981611e72611e6c611e675f610b7f565b61016d565b9161016d565b1415611ca7565b611e9e611e99611e93611e8e600285906102ea565b610ac1565b15610349565b611d4f565b611eca611eab600361084b565b611ec4611ebe611eb961052d565b6103a8565b916103a8565b10611dd1565b611ee06001611edb600284906102ea565b6111e9565b611ef4611eed600361128a565b8290611dfa565b611f1e7f038596bb31e2e7d3d9f184d4c98b310103f6d7f5830e5eec32bffe6f1728f969916102de565b90611f27610132565b80611f318161023a565b0390a256fea2646970667358221220abeef7eb1df517dd3aa309d3034d23a5a0db182a570173636d6ae305fdabc89d64736f6c634300081c0033",
-  PQAccount: "0x6080604052346100305761001a610014610104565b9061031f565b610022610035565b611a566103898239611a5690f35b61003b565b60405190565b5f80fd5b601f801991011690565b634e487b7160e01b5f52604160045260245ffd5b906100679061003f565b810190811060018060401b0382111761007f57604052565b610049565b90610097610090610035565b928361005d565b565b5f80fd5b60018060a01b031690565b6100b19061009d565b90565b6100bd816100a8565b036100c457565b5f80fd5b905051906100d5826100b4565b565b91906040838203126100ff57806100f36100fc925f86016100c8565b936020016100c8565b90565b610099565b610122611ddf8038038061011781610084565b9283398101906100d7565b9091565b90565b90565b61014061013b61014592610126565b610129565b61009d565b90565b6101519061012c565b90565b60209181520190565b5f7f50514163636f756e743a20696e76616c6964206d69677261746f720000000000910152565b610191601b602092610154565b61019a8161015d565b0190565b6101b39060208101905f818303910152610184565b90565b156101bd57565b6101c5610035565b62461bcd60e51b8152806101db6004820161019e565b0390fd5b5f7f50514163636f756e743a20696e76616c6964207265636f766572790000000000910152565b610213601b602092610154565b61021c816101df565b0190565b6102359060208101905f818303910152610206565b90565b1561023f57565b610247610035565b62461bcd60e51b81528061025d60048201610220565b0390fd5b61027561027061027a9261009d565b610129565b61009d565b90565b61028690610261565b90565b6102929061027d565b90565b5f1b90565b906102ab60018060a01b0391610295565b9181191691161790565b6102be9061027d565b90565b90565b906102d96102d46102e0926102b5565b6102c1565b825461029a565b9055565b6102ed90610261565b90565b6102f9906102e4565b90565b90565b9061031461030f61031b926102f0565b6102fc565b825461029a565b9055565b9061037f6103796103869361034f8161034861034261033d5f610148565b6100a8565b916100a8565b14156101b6565b6103748461036d6103676103625f610148565b6100a8565b916100a8565b1415610238565b610289565b5f6102c4565b60016102ff565b56fe60806040526004361015610015575b366107ee57005b61001f5f356100de565b8063187ac4cb146100d95780633f4ba83a146100d45780635c975abb146100cf5780637d74e36d146100ca5780638456cb59146100c55780638dfe0287146100c05780638e282b82146100bb5780638e8cfc49146100b657806397b255b8146100b1578063affed0e0146100ac578063b61d27f6146100a75763de314b190361000e576107b9565b61071e565b610697565b61062b565b6105c0565b610535565b6104f9565b61033f565b61030a565b610277565b6101e2565b6101a8565b60e01c90565b60405190565b5f80fd5b5f80fd5b5f9103126100fc57565b6100ee565b1c90565b60018060a01b031690565b6101209060086101259302610101565b610105565b90565b906101339154610110565b90565b6101415f5f90610128565b90565b60018060a01b031690565b90565b61016661016161016b92610144565b61014f565b610144565b90565b61017790610152565b90565b6101839061016e565b90565b61018f9061017a565b9052565b91906101a6905f60208501940190610186565b565b346101d8576101b83660046100f2565b6101d46101c3610136565b6101cb6100e4565b91829182610193565b0390f35b6100ea565b5f0190565b34610210576101f23660046100f2565b6101fa610b09565b6102026100e4565b8061020c816101dd565b0390f35b6100ea565b60ff1690565b61022b9060086102309302610101565b610215565b90565b9061023e915461021b565b90565b61024d60035f90610233565b90565b151590565b61025e90610250565b9052565b9190610275905f60208501940190610255565b565b346102a7576102873660046100f2565b6102a3610292610241565b61029a6100e4565b91829182610262565b0390f35b6100ea565b90565b90565b6102c66102c16102cb926102ac565b61014f565b6102af565b90565b6102da6207a1206102b2565b90565b6102e56102ce565b90565b6102f1906102af565b9052565b9190610308905f602085019401906102e8565b565b3461033a5761031a3660046100f2565b6103366103256102dd565b61032d6100e4565b918291826102f5565b0390f35b6100ea565b3461036d5761034f3660046100f2565b610357610c6d565b61035f6100e4565b80610369816101dd565b0390f35b6100ea565b5f80fd5b61037f90610144565b90565b61038b81610376565b0361039257565b5f80fd5b905035906103a382610382565b565b6103ae816102af565b036103b557565b5f80fd5b905035906103c6826103a5565b565b5f80fd5b5f80fd5b5f80fd5b909182601f8301121561040e5781359167ffffffffffffffff831161040957602001926001830284011161040457565b6103d0565b6103cc565b6103c8565b91906080838203126104895761042b815f8501610396565b9261043982602083016103b9565b92604082013567ffffffffffffffff8111610484578361045a9184016103d4565b929093606082013567ffffffffffffffff811161047f5761047b92016103d4565b9091565b610372565b610372565b6100ee565b5190565b60209181520190565b90825f9392825e0152565b601f801991011690565b6104cf6104d86020936104dd936104c68161048e565b93848093610492565b9586910161049b565b6104a6565b0190565b6104f69160208201915f8184039101526104b0565b90565b346105305761052c61051b61050f366004610413565b949390939291926113fc565b6105236100e4565b918291826104e1565b0390f35b6100ea565b34610565576105453660046100f2565b610561610550611419565b6105586100e4565b91829182610262565b0390f35b6100ea565b5190565b60209181520190565b61059661059f6020936105a49361058d8161056a565b9384809361056e565b9586910161049b565b6104a6565b0190565b6105bd9160208201915f818403910152610577565b90565b346105f0576105d03660046100f2565b6105ec6105db6115d6565b6105e36100e4565b918291826105a8565b0390f35b6100ea565b90602082820312610626575f82013567ffffffffffffffff81116106215761061d92016103d4565b9091565b610372565b6100ee565b3461065a5761064461063e3660046105f5565b90611779565b61064c6100e4565b80610656816101dd565b0390f35b6100ea565b90565b6106729060086106779302610101565b61065f565b90565b906106859154610662565b90565b61069460025f9061067a565b90565b346106c7576106a73660046100f2565b6106c36106b2610688565b6106ba6100e4565b918291826102f5565b0390f35b6100ea565b91606083830312610719576106e3825f8501610396565b926106f183602083016103b9565b92604082013567ffffffffffffffff81116107145761071092016103d4565b9091565b610372565b6100ee565b346107525761074e61073d6107343660046106cc565b92919091611a09565b6107456100e4565b918291826104e1565b0390f35b6100ea565b60018060a01b031690565b6107729060086107779302610101565b610757565b90565b906107859154610762565b90565b61079460015f9061077a565b90565b6107a090610376565b9052565b91906107b7905f60208501940190610797565b565b346107e9576107c93660046100f2565b6107e56107d4610788565b6107dc6100e4565b918291826107a4565b0390f35b6100ea565b5f80fd5b5f1c90565b610803610808916107f2565b610105565b90565b61081590546107f7565b90565b634e487b7160e01b5f52604160045260245ffd5b90610836906104a6565b810190811067ffffffffffffffff82111761085057604052565b610818565b60e01b90565b61086490610376565b90565b6108708161085b565b0361087757565b5f80fd5b9050519061088882610867565b565b906020828203126108a3576108a0915f0161087b565b90565b6100ee565b6108b06100e4565b3d5f823e3d90fd5b6108c19061016e565b90565b6108d06108d5916107f2565b610757565b90565b6108e290546108c4565b90565b5f7f50514163636f756e743a20756e617574686f72697a6564000000000000000000910152565b610919601760209261056e565b610922816108e5565b0190565b61093b9060208101905f81830391015261090c565b90565b1561094557565b61094d6100e4565b62461bcd60e51b81528061096360048201610926565b0390fd5b3361098a61098461097f61097a5f61080b565b61017a565b610376565b91610376565b1480156109d4575b80156109ac575b6109a29061093e565b6109aa610ac2565b565b506109a2336109cc6109c66109c160016108d8565b610376565b91610376565b149050610999565b5033610a0260206109ec6109e75f61080b565b61017a565b63ab8a2731906109fa6100e4565b938492610855565b82528180610a12600482016101dd565b03915afa8015610a7357610a34610a3991610a3f935f91610a45575b506108b8565b610376565b91610376565b14610992565b610a66915060203d8111610a6c575b610a5e818361082c565b81019061088a565b5f610a2e565b503d610a54565b6108a8565b5f1b90565b90610a8960ff91610a78565b9181191691161790565b610a9c90610250565b90565b90565b90610ab7610ab2610abe92610a93565b610a9f565b8254610a7d565b9055565b610acd5f6003610aa2565b5f610b047f0e2fb031ee032dc02d8011dc50b816eb450cf856abd8261680dac74f72165bd291610afb6100e4565b91829182610262565b0390a1565b610b11610967565b565b33610b36610b30610b2b610b265f61080b565b61017a565b610376565b91610376565b148015610b80575b8015610b58575b610b4e9061093e565b610b56610c24565b565b50610b4e33610b78610b72610b6d60016108d8565b610376565b91610376565b149050610b45565b5033610bae6020610b98610b935f61080b565b61017a565b63ab8a273190610ba66100e4565b938492610855565b82528180610bbe600482016101dd565b03915afa8015610c1f57610be0610be591610beb935f91610bf1575b506108b8565b610376565b91610376565b14610b3e565b610c12915060203d8111610c18575b610c0a818361082c565b81019061088a565b5f610bda565b503d610c00565b6108a8565b610c3060016003610aa2565b6001610c687f0e2fb031ee032dc02d8011dc50b816eb450cf856abd8261680dac74f72165bd291610c5f6100e4565b91829182610262565b0390a1565b610c75610b13565b565b606090565b610c88610c8d916107f2565b610215565b90565b610c9a9054610c7c565b90565b5f7f50514163636f756e743a20706175736564000000000000000000000000000000910152565b610cd1601160209261056e565b610cda81610c9d565b0190565b610cf39060208101905f818303910152610cc4565b90565b15610cfd57565b610d056100e4565b62461bcd60e51b815280610d1b60048201610cde565b0390fd5b90610d49969594939291610d44610d3f610d396003610c90565b15610250565b610cf6565b611189565b90565b610d559061016e565b90565b5f80fd5b90610d6f610d686100e4565b928361082c565b565b67ffffffffffffffff8111610d8f57610d8b6020916104a6565b0190565b610818565b90825f939282370152565b90929192610db4610daf82610d71565b610d5c565b93818552602085019082840111610dd057610dce92610d94565b565b610d58565b610de0913691610d9f565b90565b60200190565b610df5610dfa916107f2565b61065f565b90565b610e079054610de9565b90565b905090565b5f61190160f01b910152565b610e2760028092610e0a565b610e3081610e0f565b0190565b90565b610e43610e48916102af565b610e34565b9052565b60601b90565b610e5b90610e4c565b90565b610e6790610e52565b90565b610e76610e7b91610376565b610e5e565b9052565b90565b90565b610e91610e9691610e7f565b610e82565b9052565b610ef394610ee36014602099989596610edb828c99610ed38b610eeb9a610ecb610ec4839c610e1b565b8092610e37565b018092610e6a565b018092610e6a565b018092610e37565b018092610e85565b018092610e37565b0190565b610f0081610250565b03610f0757565b5f80fd5b90505190610f1882610ef7565b565b90602082820312610f3357610f30915f01610f0b565b90565b6100ee565b610f4190610e7f565b9052565b9190610f5f81610f5881610f6495610492565b8095610d94565b6104a6565b0190565b610f8e610f9b9593949294610f8460608401965f850190610797565b6020830190610f38565b6040818503910152610f45565b90565b5f7f50514163636f756e743a20696e76616c6964207369676e617475726500000000910152565b610fd2601c60209261056e565b610fdb81610f9e565b0190565b610ff49060208101905f818303910152610fc5565b90565b15610ffe57565b6110066100e4565b62461bcd60e51b81528061101c60048201610fdf565b0390fd5b634e487b7160e01b5f52601160045260245ffd5b61103d906102af565b5f19811461104b5760010190565b611020565b9061105c5f1991610a78565b9181191691161790565b61107a61107561107f926102af565b61014f565b6102af565b90565b90565b9061109a6110956110a192611066565b611082565b8254611050565b9055565b905090565b9091826110ba816110c1936110a5565b8093610d94565b0190565b90916110d0926110aa565b90565b906110e56110e083610d71565b610d5c565b918252565b3d5f14611105576110fa3d6110d3565b903d5f602084013e5b565b61110d610c77565b90611103565b90565b1561111e5750565b61113f9061112a6100e4565b91829162461bcd60e51b8352600483016105a8565b0390fd5b61114c9061016e565b90565b929061117891611186959361116b60608701935f8801906102e8565b8583036020870152610f45565b9160408184039101526104b0565b90565b956112329196959294939550466111f56111a230610d4c565b916111e68a896111b38c8b90610dd5565b6111c56111bf8261048e565b91610de3565b20906111d16002610dfd565b926111da6100e4565b97889660208801610e9a565b6020820181038252038261082c565b6112076112018261048e565b91610de3565b2090602061121c6112175f61080b565b61017a565b63ab8a27319061122a6100e4565b958692610855565b82528180611242600482016101dd565b03915afa80156113f75761126361128c916020955f916113ca575b506108b8565b91611297631a86b5509161127630610d4c565b95976112806100e4565b98899788968796610855565b865260048601610f68565b03915afa80156113c5576112b2915f91611397575b50610ff7565b6112ce6112c76112c26002610dfd565b611034565b6002611085565b6112d86002610dfd565b61130e7f3396aba31d3216d4a383421ce055698b867b4161fc143cbc438debb6ac57ff96916113056100e4565b918291826102f5565b0390a15f8085848690859161132d6113246100e4565b938492836110c5565b03925af19361134d61133d6110ea565b9561134787611113565b90611116565b919290926113918561137f7fe39b605d485d947e52b62c3b5028a14d5277db44425263c74171a8570715433495611143565b956113886100e4565b9485948561114f565b0390a290565b6113b8915060203d81116113be575b6113b0818361082c565b810190610f1a565b5f6112ac565b503d6113a6565b6108a8565b6113ea9150863d81116113f0575b6113e2818361082c565b81019061088a565b5f61125d565b503d6113d8565b6108a8565b90611412959493929161140d610c77565b610d1f565b90565b5f90565b611421611415565b5061144e60206114386114335f61080b565b61017a565b63ab8a2731906114466100e4565b938492610855565b8252818061145e600482016101dd565b03915afa801561151b5761147f602091611495935f916114ee575b506108b8565b636f1730799061148d6100e4565b938492610855565b825281806114a5600482016101dd565b03915afa9081156114e9575f916114bb575b5090565b6114dc915060203d81116114e2575b6114d4818361082c565b810190610f1a565b5f6114b7565b503d6114ca565b6108a8565b61150e9150833d8111611514575b611506818361082c565b81019061088a565b5f611479565b503d6114fc565b6108a8565b606090565b67ffffffffffffffff81116115435761153f6020916104a6565b0190565b610818565b9092919261155d61155882611525565b610d5c565b93818552602085019082840111611579576115779261049b565b565b610d58565b9080601f8301121561159c5781602061159993519101611548565b90565b6103c8565b906020828203126115d1575f82015167ffffffffffffffff81116115cc576115c9920161157e565b90565b610372565b6100ee565b6115de611520565b5061160b60206115f56115f05f61080b565b61017a565b63ab8a2731906116036100e4565b938492610855565b8252818061161b600482016101dd565b03915afa80156116cc5761163b5f9161165193839161169e575b506108b8565b63c45ff281906116496100e4565b938492610855565b82528180611661600482016101dd565b03915afa908115611699575f91611677575b5090565b61169391503d805f833e61168b818361082c565b8101906115a1565b5f611673565b6108a8565b6116bf915060203d81116116c5575b6116b7818361082c565b81019061088a565b5f611635565b503d6116ad565b6108a8565b60207f6564000000000000000000000000000000000000000000000000000000000000917f50514163636f756e743a206b657920726567697374726174696f6e206661696c5f8201520152565b61172b602260409261056e565b611734816116d1565b0190565b61174d9060208101905f81830391015261171e565b90565b1561175757565b61175f6100e4565b62461bcd60e51b81528061177560048201611738565b0390fd5b6117a5602061178f61178a5f61080b565b61017a565b63ab8a27319061179d6100e4565b938492610855565b825281806117b5600482016101dd565b03915afa91821561183057611800935f6117d9819582958391611802575b506108b8565b926117ee6117e56100e4565b938492836110c5565b03925af16117fa6110ea565b50611750565b565b611823915060203d8111611829575b61181b818361082c565b81019061088a565b5f6117d3565b503d611811565b6108a8565b939291903361185c61185661185161184c5f61080b565b61017a565b610376565b91610376565b149485156118a9575b61187e958015611881575b6118799061093e565b611954565b90565b50611879336118a161189b61189660016108d8565b610376565b91610376565b149050611870565b6118d895503360206118c26118bd5f61080b565b61017a565b63ab8a2731906118d06100e4565b998a92610855565b825281806118e8600482016101dd565b03915afa96871561194f5761191361190e61187e99611919935f91611921575b506108b8565b610376565b91610376565b149550611865565b611942915060203d8111611948575b61193a818361082c565b81019061088a565b5f611908565b503d611930565b6108a8565b9061197c9493929161197761197261196c6003610c90565b15610250565b610cf6565b61197f565b90565b939093505f8085848690859161199f6119966100e4565b938492836110c5565b03925af1936119bf6119af6110ea565b956119b987611113565b90611116565b91929092611a03856119f17fe39b605d485d947e52b62c3b5028a14d5277db44425263c74171a8570715433495611143565b956119fa6100e4565b9485948561114f565b0390a290565b90611a1d939291611a18610c77565b611835565b9056fea2646970667358221220a43acffc8d521b080ec04e0dd4b60ae45f81a95791393c5d4b587e888c9aee8164736f6c634300081c0033",
-};
-const MODULES = {
-  ecdsa: '0xbf2ba8ede210d184c10b4b4D3E183B0a7CD1F2E3',
-  hash: '0x388E0c1AB76A5A8C7C4567Dd8566496f96620aaE',
-  hybrid: '0x48bB3b57561d913d36634e991501fD1C7a578186',
-};
-
-let guardianList = [];
-
-function addGuardianField() {
-  const input = document.getElementById('newGuardianInput');
-  const addr = input.value.trim();
-  if (!ethers.utils.isAddress(addr)) { toast('Invalid address', 'error'); return; }
-  guardianList.push(addr);
-  const container = document.getElementById('guardianInputs');
-  const div = document.createElement('div');
-  div.className = 'flex gap-2 mb-2 items-center';
-  div.innerHTML = '<input type="text" readonly value="' + addr + '" class="flex-1 bg-gray-800/50 border border-gray-600/30 rounded-lg px-3 py-1.5 text-xs opacity-60"><button onclick="this.parentElement.remove();guardianList.splice(guardianList.indexOf(\'' + addr + '\'),1);updateRequiredSelect()" class="text-red-400 text-xs">✕</button>';
-  container.appendChild(div);
-  input.value = '';
-  updateRequiredSelect();
-}
-
-function updateRequiredSelect() {
-  const total = 1 + guardianList.length;
-  const sel = document.getElementById('requiredGuardians');
-  sel.innerHTML = '';
-  for (let i = 1; i <= total; i++) {
-    sel.innerHTML += '<option value="' + i + '">' + i + '</option>';
-  }
-}
-
-// Pad calldata for contract constructor
-function encodeConstructor(abi, args) {
-  const iface = new ethers.utils.Interface(abi);
-  return iface.encodeDeploy(args);
-}
-
-async function deployAccount() {
-  try {
-    const signer = await ensureSigner();
-    const deployer = await signer.getAddress();
-    
-    // Get selected scheme
-    const scheme = document.querySelector('input[name="scheme"]:checked').value;
-    const moduleAddr = MODULES[scheme];
-    
-    // Build guardian list
-    const guardians = [deployer, ...guardianList];
-    const required = parseInt(document.getElementById('requiredGuardians').value);
-    
-    // Disable button
-    const btn = document.getElementById('deployBtn');
-    btn.disabled = true;
-    btn.textContent = '⏳ Deploying...';
-    
-    // Show progress
-    document.getElementById('deployProgress').classList.remove('hidden');
-    
-    function setStep(id, state) {
-      const el = document.getElementById(id);
-      if (state === 'pending') el.className = 'w-4 h-4 rounded-full bg-gray-700 inline-block';
-      if (state === 'loading') el.className = 'w-4 h-4 rounded-full bg-yellow-500 pulse inline-block';
-      if (state === 'done') el.className = 'w-4 h-4 rounded-full bg-emerald-500 inline-block';
-      if (state === 'fail') el.className = 'w-4 h-4 rounded-full bg-red-500 inline-block';
-    }
-    
-    function setStepText(id, text) {
-      document.querySelector('#' + id).parentElement.childNodes[2].textContent = text;
-    }
-    
-    // Step 1: Deploy MigrationManager
-    setStep('step1', 'loading');
-    setStepText('step1', 'Deploying MigrationManager... (tx 1/3)');
-    
-    const mmAbi = [{"type":"constructor","inputs":[{"name":"_initialModule","type":"address","internalType":"address"},{"name":"_owner","type":"address","internalType":"address"}],"stateMutability":"nonpayable"}];
-    const mmData = ethers.utils.defaultAbiCoder.encode(['address','address'], [moduleAddr, deployer]);
-    const mmFull = BYTECODE.MigrationManager + mmData.slice(2);
-    
-    const tx1 = await signer.sendTransaction({ data: mmFull });
-    const rcpt1 = await tx1.wait();
-    const mmAddr = rcpt1.contractAddress;
-    setStep('step1', 'done');
-    
-    // Step 2: Deploy RecoveryManager
-    setStep('step2', 'loading');
-    setStepText('step2', 'Deploying RecoveryManager... (tx 2/3)');
-    
-    const rcAbi = [{"type":"constructor","inputs":[{"name":"_owner","type":"address","internalType":"address"},{"name":"_migrationManager","type":"address","internalType":"address"},{"name":"_guardians","type":"address[]","internalType":"address[]"},{"name":"_requiredGuardians","type":"uint256","internalType":"uint256"},{"name":"_challengePeriod","type":"uint256","internalType":"uint256"}],"stateMutability":"nonpayable"}];
-    const rcData = ethers.utils.defaultAbiCoder.encode(['address','address','address[]','uint256','uint256'], [deployer, mmAddr, guardians, required, 3*86400]);
-    const rcFull = BYTECODE.RecoveryManager + rcData.slice(2);
-    
-    const tx2 = await signer.sendTransaction({ data: rcFull });
-    const rcpt2 = await tx2.wait();
-    const rcAddr = rcpt2.contractAddress;
-    setStep('step2', 'done');
-    
-    // Step 3: Deploy PQAccount
-    setStep('step3', 'loading');
-    setStepText('step3', 'Deploying PQAccount... (tx 3/3)');
-    
-    const paAbi = [{"type":"constructor","inputs":[{"name":"_migrationManager","type":"address","internalType":"address"},{"name":"_recoveryManager","type":"address","internalType":"address"}],"stateMutability":"nonpayable"}];
-    const paData = ethers.utils.defaultAbiCoder.encode(['address','address'], [mmAddr, rcAddr]);
-    const paFull = BYTECODE.PQAccount + paData.slice(2);
-    
-    const tx3 = await signer.sendTransaction({ data: paFull });
-    const rcpt3 = await tx3.wait();
-    const paAddr = rcpt3.contractAddress;
-    setStep('step3', 'done');
-    
-    // Step 4: If HashBased or Hybrid, register a PQ key
-    if (scheme === 'hash' || scheme === 'hybrid') {
-      setStep('step4', 'loading');
-      setStepText('step4', 'Registering PQ Merkle root...');
-      try {
-        // Generate a simple Merkle root
-        const leafPrivateKey = ethers.utils.id('pq-key-' + deployer + '-' + Date.now());
-        const leafPubKey = ethers.utils.keccak256(leafPrivateKey);
-        const leafHash = ethers.utils.keccak256(leafPubKey);
-        // Single-leaf tree: root = leafHash
-        const root = leafHash;
-        
-        const pa = new ethers.Contract(paAddr, ABI_PQACCOUNT, signer);
-        const hashModIface = new ethers.utils.Interface(ABI_HASHMODULE);
-        const regData = hashModIface.encodeFunctionData('setMerkleRoot', [root]);
-        const tx4 = await pa.registerPqKey(regData);
-        await tx4.wait();
-        setStep('step4', 'done');
-      } catch(e) {
-        setStep('step4', 'fail');
-        setStepText('step4', 'PQ key registration failed: ' + e.message.slice(0,60));
-      }
-    } else {
-      document.getElementById('step4').classList.add('hidden');
-    }
-    
-    // Show result
-    document.getElementById('deployResult').classList.remove('hidden');
-    document.getElementById('newAccountAddr').textContent = paAddr;
-    document.getElementById('explorerLink').href = 'https://testnet.arcscan.app/address/' + paAddr;
-    
-    btn.textContent = '✅ Deployed!';
-    setStepText('step3', 'PQAccount deployed at ' + paAddr.slice(0,10) + '...');
-    
-    toast('✅ PQAccount deployed: ' + paAddr.slice(0,10) + '...', 'success');
-    
-  } catch(e) {
-    toast('Deploy failed: ' + e.message.slice(0,80), 'error');
-    document.getElementById('deployBtn').disabled = false;
-    document.getElementById('deployBtn').textContent = '🚀 Deploy My PQAccount';
-  }
-}
-
-// Set connected wallet in guardian field
-document.addEventListener('DOMContentLoaded', () => {
-  // Monitor wallet connection for create tab
-  const origConnect = connectWallet;
-  window._origConnect = origConnect;
-  // We'll update the guardian field when wallet info changes
-  setInterval(() => {
-    const g0 = document.getElementById('guardian0');
-    if (g0 && userAddr && g0.value !== userAddr) {
-      g0.value = userAddr;
-    }
-  }, 2000);
-});
-
 const ABI_HYBRID = [{"type":"constructor","inputs":[{"name":"_ecdsaModule","type":"address","internalType":"contract ISignatureModule"},{"name":"_hashModule","type":"address","internalType":"contract ISignatureModule"}],"stateMutability":"nonpayable"},{"type":"function","name":"isQuantumResistant","inputs":[],"outputs":[{"name":"","type":"bool","internalType":"bool"}],"stateMutability":"view"},{"type":"function","name":"schemeName","inputs":[],"outputs":[{"name":"","type":"string","internalType":"string"}],"stateMutability":"view"},{"type":"function","name":"verify","inputs":[{"name":"signer","type":"address","internalType":"address"},{"name":"digest","type":"bytes32","internalType":"bytes32"},{"name":"signature","type":"bytes","internalType":"bytes"}],"outputs":[{"name":"","type":"bool","internalType":"bool"}],"stateMutability":"view"},{"type":"event","name":"SignatureVerified","inputs":[{"name":"signer","type":"address","indexed":true,"internalType":"address"},{"name":"digest","type":"bytes32","indexed":false,"internalType":"bytes32"},{"name":"ecdsaValid","type":"bool","indexed":false,"internalType":"bool"},{"name":"hashValid","type":"bool","indexed":false,"internalType":"bool"}],"anonymous":false}];
 
 // ============================================================
@@ -653,7 +391,7 @@ const ABI_HYBRID = [{"type":"constructor","inputs":[{"name":"_ecdsaModule","type
 let provider, signer, userAddr;
 
 async function ensureSigner() {
-  if (!signer) throw new Error('Please connect wallet first');
+  if (!signer) throw new Error('请先连接钱包');
   return signer;
 }
 
@@ -678,47 +416,45 @@ function showLoading(id, msg) {
 // ============================================================
 async function connectWallet() {
   try {
-    if (!window.ethereum) { toast('Please install MetaMask! 🦊', 'error'); return; }
-
-    // Step 1: Switch to Arc Testnet FIRST (before requesting accounts)
-    document.getElementById('connectBtn').textContent = '⏳ Switching to Arc...';
-    try {
-      await window.ethereum.request({
-        method: 'wallet_switchEthereumChain',
-        params: [{ chainId: '0x4CEF52' }],
-      });
-    } catch(switchErr) {
-      if (switchErr.code === 4902) {
-        await window.ethereum.request({
-          method: 'wallet_addEthereumChain',
-          params: [{ chainId: '0x4CEF52', chainName: 'Arc Testnet', rpcUrls: ['https://rpc.testnet.arc.network'], nativeCurrency: { name: 'USDC', symbol: 'USDC', decimals: 18 } }],
-        });
-      } else if (switchErr.code !== 4001) {
-        // code 4001 = user rejected; not a hard error, continue anyway
-        throw switchErr;
-      }
-    }
-
-    // Step 2: Connect wallet on Arc
-    document.getElementById('connectBtn').textContent = '⏳ Connecting...';
+    if (!window.ethereum) { toast('请安装 MetaMask! 🦊', 'error'); return; }
     provider = new ethers.providers.Web3Provider(window.ethereum);
     await provider.send('eth_requestAccounts', []);
     signer = provider.getSigner();
     userAddr = await signer.getAddress();
-
-    // Step 3: Update UI
+    const net = await provider.getNetwork();
+    
     document.getElementById('connectBtn').textContent = `✅ ${userAddr.slice(0,6)}...${userAddr.slice(-4)}`;
     document.getElementById('connectBtn').onclick = null;
     document.getElementById('statusBar').classList.remove('hidden');
     document.getElementById('walletAddr').textContent = userAddr;
-    document.getElementById('chainBadge').innerHTML = '🟢 Arc Testnet';
-    document.getElementById('liveStatus').innerHTML = '🟢 Connected';
+    
+    if (net.chainId !== 5042002) {
+      document.getElementById('chainBadge').innerHTML = '⚠️ 请切换到 Arc Testnet';
+      try {
+        await window.ethereum.request({
+          method: 'wallet_switchEthereumChain',
+          params: [{ chainId: '0x4CEF52' }],
+        });
+      } catch(e) {
+        if (e.code === 4902) {
+          await window.ethereum.request({
+            method: 'wallet_addEthereumChain',
+            params: [{ chainId: '0x4CEF52', chainName: 'Arc Testnet', rpcUrls: ['https://rpc.testnet.arc.network'], nativeCurrency: { name: 'USDC', symbol: 'USDC', decimals: 18 } }],
+          });
+        }
+      }
+    } else {
+      document.getElementById('chainBadge').innerHTML = '🟢 Arc Testnet';
+    }
+    document.getElementById('liveStatus').innerHTML = '🟢 已连接';
+    document.getElementById('btnGenStealthKey').disabled = false;
+    document.getElementById('btnScanInbox').disabled = false;
+    privacyRefreshStatus();
     document.getElementById('liveStatus').className = 'text-2xl font-bold mt-1 text-emerald-400';
-    toast('✅ Connected on Arc Testnet!', 'success');
+    toast('✅ 钱包已连接', 'success');
     setTimeout(refreshAll, 500);
   } catch(e) {
-    toast('Connection failed: '+e.message.slice(0,80), 'error');
-    document.getElementById('connectBtn').textContent = '🔗 Connect MetaMask';
+    toast('连接失败: '+e.message, 'error');
   }
 }
 
@@ -745,8 +481,8 @@ function getSignerContract(addr, abi) {
 
 async function queryAccount() {
   const acct = document.getElementById('explorerAddr').value.trim();
-  if (!acct) { toast('Please enter account address', 'error'); return; }
-  showLoading('expScheme', 'Query中...');
+  if (!acct) { toast('请输入账户地址', 'error'); return; }
+  showLoading('expScheme', '查询中...');
   document.getElementById('explorerResult').classList.remove('hidden');
   try {
     const c = getContract(acct, ABI_PQACCOUNT);
@@ -758,7 +494,7 @@ async function queryAccount() {
     document.getElementById('expPq').textContent = pq ? '✅ 是' : '❌ 否';
     document.getElementById('expPq').className = pq ? 'text-sm font-medium text-emerald-400' : 'text-sm font-medium text-red-400';
     document.getElementById('expNonce').textContent = nonce.toString();
-    document.getElementById('expPaused').textContent = paused ? '🚫 Paused' : '✅ Active';
+    document.getElementById('expPaused').textContent = paused ? '🚫 已暂停' : '✅ 活跃';
     document.getElementById('expPaused').className = paused ? 'text-sm font-medium text-red-400' : 'text-sm font-medium text-emerald-400';
     document.getElementById('expMigrator').textContent = mig;
     document.getElementById('expRecovery').textContent = rcv;
@@ -767,19 +503,19 @@ async function queryAccount() {
       const mc = getContract(mig, ABI_MIGRATION);
       const [pm, et] = await mc.getMigrationStatus();
       if (pm === '0x0000000000000000000000000000000000000000') {
-        document.getElementById('expMigStatus').textContent = 'No pending migration';
+        document.getElementById('expMigStatus').textContent = '无待处理迁移';
       } else {
         const now = Math.floor(Date.now()/1000);
-        const wait = et.gt(now) ? `${Math.ceil((et-now)/86400)}d ${Math.ceil(((et-now)%86400)/3600)}h` : 'Ready!';
-        document.getElementById('expMigStatus').innerHTML = `<span class="text-yellow-400">→ ${pm.slice(0,10)}... Ready: ${wait}</span>`;
+        const wait = et.gt(now) ? `${Math.ceil((et-now)/86400)} 天 ${Math.ceil(((et-now)%86400)/3600)} 小时` : '可执行!';
+        document.getElementById('expMigStatus').innerHTML = `<span class="text-yellow-400">→ ${pm.slice(0,10)}... 可执行: ${wait}</span>`;
       }
     } catch(e) {
-      document.getElementById('expMigStatus').textContent = 'Cannot read migration status';
+      document.getElementById('expMigStatus').textContent = '无法读取迁移状态';
     }
-    toast('✅ QuerySuccess', 'success');
+    toast('✅ 查询成功', 'success');
   } catch(e) {
-    document.getElementById('expScheme').textContent = '❌ Error: '+e.message.slice(0,60);
-    toast('QueryFailed: '+e.message.slice(0,60), 'error');
+    document.getElementById('expScheme').textContent = '❌ 错误: '+e.message.slice(0,60);
+    toast('查询失败: '+e.message.slice(0,60), 'error');
   }
 }
 
@@ -814,12 +550,12 @@ async function refreshAll() {
       const d = Math.floor(secs/86400), h = Math.floor((secs%86400)/3600), m = Math.floor((secs%3600)/60);
       document.getElementById('migCountdown').textContent = `${d}d ${h}h ${m}m`;
     } else {
-      document.getElementById('migCountdown').textContent = 'Migrated!';
+      document.getElementById('migCountdown').textContent = '已迁移!';
     }
   } catch(e) {
     document.getElementById('migCountdown').textContent = 'N/A';
   }
-  toast('✅ Refreshed', 'success');
+  toast('✅ 已刷新', 'success');
 }
 
 // ============================================================
@@ -827,9 +563,9 @@ async function refreshAll() {
 // ============================================================
 async function inspectMigration() {
   const addr = document.getElementById('migMgrAddr').value.trim();
-  if (!addr) { toast('Please enter  MigrationManager Address', 'error'); return; }
+  if (!addr) { toast('请输入 MigrationManager 地址', 'error'); return; }
   document.getElementById('migResult').classList.remove('hidden');
-  showLoading('migCurrent', 'Query中...');
+  showLoading('migCurrent', '查询中...');
   try {
     const mc = getContract(addr, ABI_MIGRATION);
     const [cur, pend, ts] = await Promise.all([mc.activeModule(), mc.pendingModule(), mc.migrationTimestamp()]);
@@ -837,56 +573,56 @@ async function inspectMigration() {
     document.getElementById('migPending').textContent = pend === '0x0000000000000000000000000000000000000000' ? '无' : pend;
     const now = Math.floor(Date.now()/1000);
     if (ts.toString() === '0') {
-      document.getElementById('migTimestamp').textContent = 'Not Scheduled';
+      document.getElementById('migTimestamp').textContent = '未排期';
     } else {
       const d = Math.max(0, ts.toNumber() - now);
       document.getElementById('migTimestamp').textContent = `${Math.floor(d/86400)}d ${Math.floor((d%86400)/3600)}h ${Math.floor((d%3600)/60)}m`;
     }
-    toast('✅ Migration StatusFetched', 'success');
+    toast('✅ 迁移状态已获取', 'success');
   } catch(e) {
-    document.getElementById('migCurrent').textContent = 'Error: '+e.message.slice(0,50);
-    toast('QueryFailed', 'error');
+    document.getElementById('migCurrent').textContent = '错误: '+e.message.slice(0,50);
+    toast('查询失败', 'error');
   }
 }
 
 async function executeMig() {
   const addr = document.getElementById('migMgrAddr').value.trim();
-  if (!addr) { toast('Please enter Address', 'error'); return; }
+  if (!addr) { toast('请输入地址', 'error'); return; }
   try {
     const s = await ensureSigner();
     const mc = getSignerContract(addr, ABI_MIGRATION);
     const tx = await mc.executeMigration();
-    toast(`⏳ Migration tx sent: ${tx.hash.slice(0,10)}...`, 'info');
+    toast(`⏳ 迁移交易已发送: ${tx.hash.slice(0,10)}...`, 'info');
     const r = await tx.wait();
-    toast(`✅ Migration successful! block: ${r.blockNumber}`, 'success');
-  } catch(e) { toast('Migration failed: '+e.message.slice(0,80), 'error'); }
+    toast(`✅ 迁移成功! 区块: ${r.blockNumber}`, 'success');
+  } catch(e) { toast('迁移失败: '+e.message.slice(0,80), 'error'); }
 }
 
 async function cancelMig() {
   const addr = document.getElementById('migMgrAddr').value.trim();
-  if (!addr) { toast('Please enter Address', 'error'); return; }
+  if (!addr) { toast('请输入地址', 'error'); return; }
   try {
     const s = await ensureSigner();
     const mc = getSignerContract(addr, ABI_MIGRATION);
     const tx = await mc.cancelMigration();
-    toast(`⏳ Sending cancel tx...`, 'info');
+    toast(`⏳ 发送取消交易...`, 'info');
     await tx.wait();
-    toast('✅ Migration cancelled', 'success');
-  } catch(e) { toast('Cancel failed: '+e.message.slice(0,80), 'error'); }
+    toast('✅ 迁移已取消', 'success');
+  } catch(e) { toast('取消失败: '+e.message.slice(0,80), 'error'); }
 }
 
 async function scheduleMig() {
   const addr = document.getElementById('migMgrAddr').value.trim();
-  if (!addr) { toast('Please enter Address', 'error'); return; }
+  if (!addr) { toast('请输入地址', 'error'); return; }
   try {
     const s = await ensureSigner();
     const mc = getSignerContract(addr, ABI_MIGRATION);
     const delay = 7 * 86400;
     const tx = await mc.scheduleMigration(CONTRACTS.hash, delay);
-    toast(`⏳ Schedule tx sent...`, 'info');
+    toast(`⏳ 排期交易已发送...`, 'info');
     await tx.wait();
-    toast('✅ MigrationScheduled！7-day timelock: Ready', 'success');
-  } catch(e) { toast('Schedule failed: '+e.message.slice(0,80), 'error'); }
+    toast('✅ 迁移已排期！7天后可执行', 'success');
+  } catch(e) { toast('排期失败: '+e.message.slice(0,80), 'error'); }
 }
 
 // ============================================================
@@ -894,9 +630,9 @@ async function scheduleMig() {
 // ============================================================
 async function inspectRecovery() {
   const a = document.getElementById('rcvAddr').value.trim();
-  if (!a) { toast('Please enter  RecoveryManager Address', 'error'); return; }
+  if (!a) { toast('请输入 RecoveryManager 地址', 'error'); return; }
   document.getElementById('rcvResult').classList.remove('hidden');
-  showLoading('rcvOwner', 'Query中...');
+  showLoading('rcvOwner', '查询中...');
   try {
     const c = getContract(a, ABI_RECOVERY);
     const [owner, guardians, required, period] = await Promise.all([
@@ -906,52 +642,52 @@ async function inspectRecovery() {
     document.getElementById('rcvGuardians').textContent = guardians.map(g=>g.slice(0,10)).join(', ');
     document.getElementById('rcvRequired').textContent = `${required.toString()} / ${guardians.length}`;
     document.getElementById('rcvPeriod').textContent = `${period.toString()} 秒 (${Math.floor(period/86400)}天)`;
-    toast('✅ Config fetched', 'success');
+    toast('✅ 恢复配置已获取', 'success');
   } catch(e) {
-    document.getElementById('rcvOwner').textContent = 'Error';
-    toast('QueryFailed', 'error');
+    document.getElementById('rcvOwner').textContent = '错误';
+    toast('查询失败', 'error');
   }
 }
 
 async function initiateRecovery() {
   const a = document.getElementById('rcvAddr').value.trim();
-  if (!a) { toast('Please enter Address', 'error'); return; }
-  const newOwner = prompt('Enter new  Owner Address:');
+  if (!a) { toast('请输入地址', 'error'); return; }
+  const newOwner = prompt('输入新 Owner 地址:');
   if (!newOwner) return;
   try {
     const s = await ensureSigner();
     const c = getSignerContract(a, ABI_RECOVERY);
     const tx = await c.initiateRecovery(newOwner, '0x0000000000000000000000000000000000000000');
-    toast(`⏳ 📢 Initiate... ${tx.hash.slice(0,10)}...`, 'info');
+    toast(`⏳ 发起恢复... ${tx.hash.slice(0,10)}...`, 'info');
     await tx.wait();
-    toast('✅ ResumeInitiated！Awaiting guardian approval', 'success');
-  } catch(e) { toast('Initiation failed: '+e.message.slice(0,80), 'error'); }
+    toast('✅ 恢复已发起！等待守护者批准', 'success');
+  } catch(e) { toast('发起失败: '+e.message.slice(0,80), 'error'); }
 }
 
 async function approveRecovery() {
   const a = document.getElementById('rcvAddr').value.trim();
-  if (!a) { toast('Please enter Address', 'error'); return; }
+  if (!a) { toast('请输入地址', 'error'); return; }
   try {
     const s = await ensureSigner();
     const c = getSignerContract(a, ABI_RECOVERY);
     const tx = await c.approveRecovery();
-    toast(`⏳ ✅ Approve...`, 'info');
+    toast(`⏳ 批准恢复...`, 'info');
     await tx.wait();
-    toast('✅ Approved！Threshold reached: Ready', 'success');
-  } catch(e) { toast('Approval failed: '+e.message.slice(0,80), 'error'); }
+    toast('✅ 已批准！达到阈值后可执行', 'success');
+  } catch(e) { toast('批准失败: '+e.message.slice(0,80), 'error'); }
 }
 
 async function executeRecovery() {
   const a = document.getElementById('rcvAddr').value.trim();
-  if (!a) { toast('Please enter Address', 'error'); return; }
+  if (!a) { toast('请输入地址', 'error'); return; }
   try {
     const s = await ensureSigner();
     const c = getSignerContract(a, ABI_RECOVERY);
     const tx = await c.executeRecovery();
-    toast(`⏳ 🚀 Execute...`, 'info');
+    toast(`⏳ 执行恢复...`, 'info');
     await tx.wait();
-    toast('✅ ResumeExecuted！New Owner effective', 'success');
-  } catch(e) { toast('Execute failed: '+e.message.slice(0,80), 'error'); }
+    toast('✅ 恢复已执行！新 Owner 生效', 'success');
+  } catch(e) { toast('执行失败: '+e.message.slice(0,80), 'error'); }
 }
 
 // ============================================================
@@ -960,20 +696,20 @@ async function executeRecovery() {
 async function registerPqKey() {
   const acct = document.getElementById('regAccount').value.trim();
   const root = document.getElementById('regMerkleRoot').value.trim();
-  if (!acct || !root) { toast('Please enter account address和 Merkle Root', 'error'); return; }
+  if (!acct || !root) { toast('请输入账户地址和 Merkle Root', 'error'); return; }
   document.getElementById('regResult').classList.remove('hidden');
-  document.getElementById('regMsg').innerHTML = '<span class="text-yellow-400 pulse">⏳ Send tx...</span>';
+  document.getElementById('regMsg').innerHTML = '<span class="text-yellow-400 pulse">⏳ 发送交易...</span>';
   try {
     const s = await ensureSigner();
     const c = getSignerContract(acct, ABI_PQACCOUNT);
     const tx = await c.registerPqKey(root);
-    document.getElementById('regMsg').innerHTML = `<span class="text-yellow-400">⏳ Tx: ${tx.hash.slice(0,10)}...</span>`;
+    document.getElementById('regMsg').innerHTML = `<span class="text-yellow-400">⏳ 交易: ${tx.hash.slice(0,10)}...</span>`;
     await tx.wait();
-    document.getElementById('regMsg').innerHTML = '<span class="text-emerald-400">✅ PQ Key Registered！</span>';
-    toast('✅ Key Success', 'success');
+    document.getElementById('regMsg').innerHTML = '<span class="text-emerald-400">✅ PQ 密钥注册成功！</span>';
+    toast('✅ 密钥注册成功', 'success');
   } catch(e) {
-    document.getElementById('regMsg').innerHTML = `<span class="text-red-400">❌ Failed: ${e.message.slice(0,80)}</span>`;
-    toast('RegisterFailed', 'error');
+    document.getElementById('regMsg').innerHTML = `<span class="text-red-400">❌ 失败: ${e.message.slice(0,80)}</span>`;
+    toast('注册失败', 'error');
   }
 }
 
@@ -984,7 +720,7 @@ function generateNewRoot() {
   document.getElementById('regMerkleRoot').value = root;
   document.getElementById('genRootResult').classList.remove('hidden');
   document.getElementById('genRootResult').textContent = root;
-  toast('✅ 已🔄 Generate New Root', 'success');
+  toast('✅ 已生成新 Merkle Root', 'success');
 }
 
 // ============================================================
@@ -1038,7 +774,7 @@ function verifyMerkle(digest, sig) {
 const demoTree = genDemoTree();
 
 function demoSign() {
-  const msg = document.getElementById('msgInput').value || 'Default message';
+  const msg = document.getElementById('msgInput').value || '默认消息';
   const digest = keccak256(msg);
   const leafIdx = Math.floor(Math.random() * NUM_LEAVES);
   const privKey = demoTree.privKeys[leafIdx];
@@ -1053,14 +789,532 @@ function demoSign() {
   document.getElementById('sigComponent').textContent = '0x' + sigComponent;
   document.getElementById('sigProof').textContent = proof.map(p => '0x' + p).join('\n');
   const el = document.getElementById('sigResultText');
-  el.textContent = valid ? '✅ Signature valid! Merkle Root matches' : '❌ Signature invalid!';
+  el.textContent = valid ? '✅ 签名有效! Merkle 根匹配' : '❌ 签名无效!';
   el.className = valid ? 'text-lg font-bold text-emerald-400' : 'text-lg font-bold text-red-400';
 }
 
 // ============================================================
 // Init
 // ============================================================
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('msgInput').value = 'Hello, quantum-resistant Arc!';
+  demoSign();
+  
+  // Try auto-connecting if ethereum is available
+  if (window.ethereum && window.ethereum.selectedAddress) {
+    setTimeout(connectWallet, 300);
+  }
+  
+  // Quick initial check using RPC
+  setTimeout(refreshAll, 1000);
+});
 
+// ============================================================
+// Privacy Manager (Stealth Address / ERC-5564)
+// ============================================================
+const PRIVACY_MANAGER = '0xE6C665048Bfcc1A2D9C9331BF8D586532216C136';
+
+const ABI_PRIVACY = [
+  {"type":"function","name":"registerStealthKey","inputs":[{"name":"_publicKey","type":"bytes","internalType":"bytes"}],"outputs":[],"stateMutability":"nonpayable"},
+  {"type":"function","name":"togglePrivacyOptIn","inputs":[],"outputs":[],"stateMutability":"nonpayable"},
+  {"type":"function","name":"sendPrivate","inputs":[{"name":"_ephemeralPubKey","type":"bytes","internalType":"bytes"},{"name":"_encryptedCiphertext","type":"bytes","internalType":"bytes"},{"name":"_recipientHint","type":"bytes32","internalType":"bytes32"}],"outputs":[],"stateMutability":"nonpayable"},
+  {"type":"function","name":"hasPrivacy","inputs":[{"name":"_account","type":"address","internalType":"address"}],"outputs":[{"name":"","type":"bool","internalType":"bool"}],"stateMutability":"view"},
+  {"type":"function","name":"stealthKeys","inputs":[{"name":"","type":"address","internalType":"address"}],"outputs":[{"name":"","type":"bytes","internalType":"bytes"}],"stateMutability":"view"},
+  {"type":"function","name":"getStealthKey","inputs":[{"name":"_account","type":"address","internalType":"address"}],"outputs":[{"name":"","type":"bytes","internalType":"bytes"}],"stateMutability":"view"},
+  {"type":"function","name":"privacyOptIn","inputs":[{"name":"","type":"address","internalType":"address"}],"outputs":[{"name":"","type":"bool","internalType":"bool"}],"stateMutability":"view"},
+  {"type":"function","name":"unregisterPrivacy","inputs":[],"outputs":[],"stateMutability":"nonpayable"},
+  {"type":"function","name":"acknowledgePrivateTx","inputs":[{"name":"_stealthId","type":"bytes32","internalType":"bytes32"}],"outputs":[],"stateMutability":"nonpayable"},
+  {"type":"function","name":"privateTxCount","inputs":[],"outputs":[{"name":"","type":"uint256","internalType":"uint256"}],"stateMutability":"view"},
+  {"type":"event","name":"PrivateTransaction","inputs":[{"name":"stealthId","type":"bytes32","indexed":true,"internalType":"bytes32"},{"name":"sender","type":"address","indexed":true,"internalType":"address"},{"name":"ephemeralPubKey","type":"bytes","indexed":false,"internalType":"bytes"},{"name":"encryptedCiphertext","type":"bytes","indexed":false,"internalType":"bytes"},{"name":"nonce","type":"uint256","indexed":false,"internalType":"uint256"},{"name":"timestamp","type":"uint256","indexed":false,"internalType":"uint256"}],"anonymous":false},
+  {"type":"event","name":"StealthKeyRegistered","inputs":[{"name":"account","type":"address","indexed":true,"internalType":"address"},{"name":"publicKey","type":"bytes","indexed":false,"internalType":"bytes"},{"name":"timestamp","type":"uint256","indexed":false,"internalType":"uint256"}],"anonymous":false}
+];
+
+// Storage keys for localStorage
+const LS_STEALTH_PRIV = 'pq_stealth_priv';
+const LS_TEST_WALLET = 'pq_test_wallet';
+
+let privacyContract;
+let stealthKeyPair = null;  // { priv: hex, pub: hex }
+let testWallet = null;      // ethers Wallet
+
+function getPrivacyContract() {
+  if (!privacyContract && provider) {
+    privacyContract = new ethers.Contract(PRIVACY_MANAGER, ABI_PRIVACY, provider);
+  }
+  return privacyContract;
+}
+
+function getPrivacySigner() {
+  if (!signer) return null;
+  return new ethers.Contract(PRIVACY_MANAGER, ABI_PRIVACY, signer);
+}
+
+// Generate a new secp256k1 stealth key pair
+function privacyGenKey() {
+  if (typeof elliptic === 'undefined') {
+    showToast('Elliptic library not loaded', 'error');
+    return;
+  }
+  
+  const ec = new elliptic.ec('secp256k1');
+  const key = ec.genKeyPair();
+  const privHex = key.getPrivate('hex');
+  const pubBytes = key.getPublic().encode('array', false); // 65 bytes: 0x04 + x + y
+  const pub64 = pubBytes.slice(1); // remove 0x04 prefix → 64 bytes
+  const pubHex = Array.from(pub64).map(b => b.toString(16).padStart(2,'0')).join('');
+  
+  stealthKeyPair = { priv: privHex, pub: pubHex };
+  
+  // Save to localStorage
+  try {
+    const store = JSON.parse(localStorage.getItem(LS_STEALTH_PRIV) || '{}');
+    store[account] = privHex;
+    localStorage.setItem(LS_STEALTH_PRIV, JSON.stringify(store));
+  } catch(e) {}
+  
+  document.getElementById('stealthPubDisplay').textContent = '0x' + pubHex;
+  document.getElementById('privacyKeyInfo').classList.remove('hidden');
+  document.getElementById('btnRegStealthKey').disabled = false;
+  document.getElementById('btnRegStealthKey').textContent = 'Register On-Chain';
+  document.getElementById('stealthKeyStatus').innerHTML = '<span class="text-emerald-400">✅ Key generated locally</span>';
+  showToast('Stealth key pair generated', 'success');
+}
+
+// Register stealth public key on-chain
+async function privacyRegisterKey() {
+  if (!signer || !stealthKeyPair) {
+    showToast('Connect wallet and generate key first', 'error');
+    return;
+  }
+  const ec = new elliptic.ec('secp256k1');
+  const key = ec.keyFromPrivate(stealthKeyPair.priv, 'hex');
+  const pubBytes = key.getPublic().encode('array', false); // 65 bytes with 0x04
+  const pubRaw = new Uint8Array(pubBytes);
+  
+  try {
+    const c = getPrivacySigner();
+    const tx = await c.registerStealthKey('0x' + stealthKeyPair.pub);
+    showToast('Registering stealth key...', 'info');
+    await tx.wait();
+    document.getElementById('btnRegStealthKey').disabled = true;
+    document.getElementById('btnRegStealthKey').textContent = '✅ Registered';
+    document.getElementById('btnTogglePrivacy').disabled = false;
+    document.getElementById('btnSendPrivate').disabled = false;
+    document.getElementById('stealthKeyStatus').innerHTML = '<span class="text-emerald-400">✅ Registered on-chain</span>';
+    showToast('Stealth key registered on-chain!', 'success');
+  } catch(e) {
+    showToast('Registration failed: ' + e.message, 'error');
+  }
+}
+
+// Toggle privacy opt-in
+async function privacyToggle() {
+  if (!signer) return;
+  try {
+    const c = getPrivacySigner();
+    const tx = await c.togglePrivacyOptIn();
+    showToast('Toggle privacy mode...', 'info');
+    await tx.wait();
+    await privacyRefreshStatus();
+    showToast('Privacy toggled', 'success');
+  } catch(e) {
+    showToast('Toggle failed', 'error');
+  }
+}
+
+// Refresh stealth key & privacy status from chain
+async function privacyRefreshStatus() {
+  if (!account || !provider) return;
+  const c = getPrivacyContract();
+  if (!c) return;
+  
+  try {
+    const keyBytes = await c.getStealthKey(account);
+    const optedIn = await c.privacyOptIn(account);
+    
+    document.getElementById('privacyModeDisplay').textContent = optedIn ? 'ON 🟢' : 'OFF ⚫';
+    document.getElementById('privacyModeDisplay').className = optedIn ? 'text-sm font-bold text-emerald-400' : 'text-sm font-bold text-gray-400';
+    
+    if (keyBytes && keyBytes !== '0x' && keyBytes.length > 4) {
+      document.getElementById('stealthKeyStatus').innerHTML = '<span class="text-emerald-400">✅ Registered on-chain</span>';
+      document.getElementById('btnRegStealthKey').disabled = true;
+      document.getElementById('btnRegStealthKey').textContent = '✅ Registered';
+      document.getElementById('btnTogglePrivacy').disabled = false;
+      document.getElementById('btnSendPrivate').disabled = false;
+      
+      // If we have the priv key in storage, show the pub key
+      try {
+        const store = JSON.parse(localStorage.getItem(LS_STEALTH_PRIV) || '{}');
+        if (store[account]) {
+          stealthKeyPair = { priv: store[account], pub: keyBytes.replace('0x','') };
+          document.getElementById('stealthPubDisplay').textContent = keyBytes;
+          document.getElementById('privacyKeyInfo').classList.remove('hidden');
+        }
+      } catch(e) {}
+    } else {
+      // Check if we have a local key but not registered
+      try {
+        const store = JSON.parse(localStorage.getItem(LS_STEALTH_PRIV) || '{}');
+        if (store[account]) {
+          stealthKeyPair = { priv: store[account], pub: '' };
+          document.getElementById('stealthKeyStatus').innerHTML = '<span class="text-yellow-400">⚠️ Key in browser only — register on-chain</span>';
+          document.getElementById('btnRegStealthKey').disabled = false;
+        }
+      } catch(e) {}
+    }
+  } catch(e) {
+    console.log('Privacy refresh error:', e);
+  }
+}
+
+// ============================================================
+// Private Transaction Functions
+// ============================================================
+
+// XOR encrypt/decrypt using a derived key
+function xorCrypto(data, key) {
+  const dataBytes = typeof data === 'string' ? new TextEncoder().encode(data) : new Uint8Array(data);
+  const keyBytes = ethers.utils.arrayify(key);
+  const result = new Uint8Array(dataBytes.length);
+  for (let i = 0; i < dataBytes.length; i++) {
+    result[i] = dataBytes[i] ^ keyBytes[i % keyBytes.length];
+  }
+  return result;
+}
+
+function bytesToHex(bytes) {
+  return Array.from(bytes).map(b => b.toString(16).padStart(2,'0')).join('');
+}
+
+function hexToBytes(hex) {
+  hex = hex.replace('0x','');
+  const result = new Uint8Array(hex.length/2);
+  for (let i = 0; i < hex.length; i+=2) result[i/2] = parseInt(hex.substr(i,2), 16);
+  return result;
+}
+
+// ECDH: derive shared secret from my private key + their public key
+function deriveSharedSecret(myPrivHex, theirPub64Hex) {
+  if (typeof elliptic === 'undefined') return null;
+  const ec = new elliptic.ec('secp256k1');
+  const myKey = ec.keyFromPrivate(myPrivHex, 'hex');
+  const theirKey = ec.keyFromPublic('04' + theirPub64Hex, 'hex');
+  const shared = myKey.derive(theirKey.getPublic());
+  const sharedHex = shared.toString(16).padStart(64, '0');
+  return ethers.utils.keccak256('0x' + sharedHex); // 32 bytes
+}
+
+// Encrypt a message for a recipient
+async function encryptFor(recipientAddr, message) {
+  if (!stealthKeyPair) throw new Error('Generate stealth key first');
+  
+  const ec = new elliptic.ec('secp256k1');
+  
+  // Generate ephemeral key pair
+  const ephKey = ec.genKeyPair();
+  const ephPriv = ephKey.getPrivate('hex');
+  const ephPubBytes = ephKey.getPublic().encode('array', false); // 65 bytes
+  
+  // Fetch recipient's public key from chain
+  const c = getPrivacyContract();
+  const theirPubBytes = await c.getStealthKey(recipientAddr);
+  if (!theirPubBytes || theirPubBytes === '0x' || theirPubBytes.length < 10) {
+    throw new Error('Recipient has no stealth key registered');
+  }
+  
+  const theirPubHex = theirPubBytes.replace('0x','');
+  
+  // ECDH: shared = ephPriv * theirPub
+  const theirKey = ec.keyFromPublic('04' + theirPubHex, 'hex');
+  const shared = ephKey.derive(theirKey.getPublic());
+  const sharedHex = shared.toString(16).padStart(64, '0');
+  const symmetricKey = ethers.utils.keccak256('0x' + sharedHex);
+  
+  // Encrypt: [recipient_addr(20 bytes) + message]
+  const recipientClean = recipientAddr.replace('0x','').toLowerCase();
+  const payload = recipientClean + message;
+  const encrypted = xorCrypto(payload, symmetricKey);
+  const encryptedHex = bytesToHex(encrypted);
+  
+  // Ephemeral public key (64 bytes, no 0x04 prefix)
+  const ephPub64 = ephPubBytes.slice(1);
+  const ephPubHex = bytesToHex(ephPub64);
+  
+  return { ephemeralPubKey: ephPubHex, ciphertext: encryptedHex };
+}
+
+// Send a private transaction
+async function privacySend() {
+  if (!signer || !stealthKeyPair) {
+    showToast('Connect wallet and register stealth key', 'error');
+    return;
+  }
+  
+  const recipient = document.getElementById('privacyRecipient').value.trim();
+  const message = document.getElementById('privacyMessage').value.trim();
+  
+  if (!ethers.utils.isAddress(recipient)) {
+    showToast('Invalid recipient address', 'error');
+    return;
+  }
+  if (!message) {
+    showToast('Enter a message', 'error');
+    return;
+  }
+  
+  try {
+    showToast('Encrypting message...', 'info');
+    const { ephemeralPubKey, ciphertext } = await encryptFor(recipient, message);
+    
+    // Compute recipient hint for faster scanning
+    const recipientHint = ethers.utils.keccak256(recipient);
+    
+    // Send on-chain
+    const c = getPrivacySigner();
+    const tx = await c.sendPrivate(
+      '0x' + ephemeralPubKey,
+      '0x' + ciphertext,
+      recipientHint
+    );
+    showToast('🔄 Sending private transaction...', 'info');
+    await tx.wait();
+    showToast('🔒 Private transaction sent! Only ' + recipient.substr(0, 10) + '... can decrypt it.', 'success');
+    document.getElementById('privacyMessage').value = '';
+  } catch(e) {
+    showToast('Failed: ' + e.message, 'error');
+  }
+}
+
+// Try to decrypt a private transaction payload
+function tryDecrypt(encryptedHex, ephPubHex, myPrivHex) {
+  if (!myPrivHex) return null;
+  const ec = new elliptic.ec('secp256k1');
+  
+  try {
+    const myKey = ec.keyFromPrivate(myPrivHex, 'hex');
+    const ephPubKey = ec.keyFromPublic('04' + ephPubHex, 'hex');
+    const shared = myKey.derive(ephPubKey.getPublic());
+    const sharedHex = shared.toString(16).padStart(64, '0');
+    const symmetricKey = ethers.utils.keccak256('0x' + sharedHex);
+    
+    const decryptedBytes = xorCrypto(hexToBytes(encryptedHex), symmetricKey);
+    const decrypted = new TextDecoder().decode(decryptedBytes);
+    
+    // First 20 bytes should be our address (as hex string) if this is for us
+    // Format: "ffffffffffffffffffffffffffffffffffffffff<message>"
+    return decrypted;
+  } catch(e) {
+    return null;
+  }
+}
+
+// Scan for incoming private transactions
+async function privacyScan() {
+  if (!provider || !account) {
+    showToast('Connect wallet first', 'error');
+    return;
+  }
+  
+  // Get our private key from storage
+  let myPriv;
+  try {
+    const store = JSON.parse(localStorage.getItem(LS_STEALTH_PRIV) || '{}');
+    myPriv = store[account];
+  } catch(e) {}
+  
+  if (!testWallet) {
+    try {
+      const store = JSON.parse(localStorage.getItem(LS_TEST_WALLET) || '{}');
+      if (store.privKey) {
+        testWallet = new ethers.Wallet(store.privKey, provider);
+      }
+    } catch(e) {}
+  }
+  
+  showToast('🔍 Scanning the blockchain...', 'info');
+  
+  try {
+    const c = getPrivacyContract();
+    const filter = c.filters.PrivateTransaction(null, null);
+    const events = await c.queryFilter(filter, -50000, 'latest');
+    
+    const inboxList = document.getElementById('inboxList');
+    const inboxCount = document.getElementById('inboxCount');
+    
+    if (events.length === 0) {
+      inboxList.innerHTML = '<div class="text-xs text-gray-500 text-center py-4">No private transactions found on-chain.</div>';
+      inboxCount.textContent = '0 messages';
+      showToast('No private transactions found', 'info');
+      return;
+    }
+    
+    let count = 0;
+    let html = '';
+    
+    // Try decrypting with our key and test wallet key
+    const privKeys = [];
+    if (myPriv) privKeys.push({ addr: account, key: myPriv });
+    if (testWallet) privKeys.push({ addr: testWallet.address, key: testWallet.privateKey.replace('0x','') });
+    
+    for (const event of events) {
+      const ephPubHex = hexToBytes(event.args.ephemeralPubKey);
+      const ephPubStr = bytesToHex(ephPubHex);
+      const ciphertext = event.args.encryptedCiphertext.replace('0x','');
+      
+      let decrypted = null;
+      let decryptedFor = '';
+      
+      for (const pk of privKeys) {
+        const result = tryDecrypt(ciphertext, ephPubStr, pk.key);
+        if (result) {
+          // Check if the address prefix matches
+          const addrClean = pk.addr.replace('0x','').toLowerCase();
+          if (result.toLowerCase().startsWith(addrClean)) {
+            decrypted = result.substring(40); // remove address prefix (20 bytes = 40 hex chars)
+            decryptedFor = pk.addr.substr(0, 10) + '...';
+            count++;
+            break;
+          }
+        }
+      }
+      
+      const sender = event.args.sender;
+      const ts = new Date(Number(event.args.timestamp) * 1000).toLocaleString();
+      
+      html += '<div class="bg-gray-800/30 rounded-lg p-3 text-xs border border-gray-700/30">';
+      html += '<div class="flex justify-between mb-1">';
+      html += '<span class="text-gray-500">From: <span class="hash text-gray-300">' + sender.substr(0,10) + '...</span></span>';
+      html += '<span class="text-gray-600">' + ts + '</span>';
+      html += '</div>';
+      
+      if (decrypted) {
+        html += '<div class="text-emerald-400 mt-1">🔓 Decrypted: "' + decrypted + '" (for ' + decryptedFor + ')</div>';
+      } else {
+        html += '<div class="text-gray-500 mt-1">🔒 Encrypted (not for you)</div>';
+      }
+      html += '<div class="text-gray-600 mt-1">Stealth: 0x' + ephPubStr.substring(0,16) + '...</div>';
+      html += '</div>';
+    }
+    
+    inboxList.innerHTML = html || '<div class="text-xs text-gray-500 text-center py-4">No decryptable messages found for you.</div>';
+    inboxCount.textContent = count + ' decrypted / ' + events.length + ' total';
+    showToast('Scan complete', 'success');
+  } catch(e) {
+    showToast('Scan failed: ' + e.message, 'error');
+    console.error(e);
+  }
+}
+
+// ============================================================
+// Test Wallet Functions
+// ============================================================
+
+// Generate a test wallet (Wallet B)
+function privacyGenTestWallet() {
+  const w = ethers.Wallet.createRandom();
+  testWallet = w;
+  
+  const addr = w.address;
+  
+  // Save to localStorage
+  try {
+    localStorage.setItem(LS_TEST_WALLET, JSON.stringify({ address: addr, privKey: w.privateKey }));
+  } catch(e) {}
+  
+  document.getElementById('testWalletInfo').classList.remove('hidden');
+  document.getElementById('testWalletAddr').textContent = addr;
+  document.getElementById('testWalletBal').textContent = '0';
+  document.getElementById('btnFundTestWallet').disabled = false;
+  document.getElementById('btnFundTestWallet').textContent = '💰 Fund (0.001 ARC)';
+  
+  showToast('Test wallet generated: ' + addr.substr(0,10) + '...', 'success');
+}
+
+// Fund test wallet from main wallet
+async function privacyFundTestWallet() {
+  if (!signer || !testWallet) {
+    showToast('Connect wallet and generate test wallet', 'error');
+    return;
+  }
+  
+  try {
+    showToast('Funding test wallet...', 'info');
+    const tx = await signer.sendTransaction({
+      to: testWallet.address,
+      value: ethers.utils.parseEther('0.001')
+    });
+    await tx.wait();
+    
+    // Update balance
+    const bal = await provider.getBalance(testWallet.address);
+    document.getElementById('testWalletBal').textContent = ethers.utils.formatEther(bal);
+    showToast('Test wallet funded!', 'success');
+    
+    // Auto-register stealth key for test wallet
+    if (typeof elliptic !== 'undefined') {
+      const ec = new elliptic.ec('secp256k1');
+      const key = ec.genKeyPair();
+      const pubBytes = key.getPublic().encode('array', false);
+      const pub64 = pubBytes.slice(1);
+      const pubHex = Array.from(pub64).map(b => b.toString(16).padStart(2,'0')).join('');
+      
+      // Register via test wallet
+      const testSigner = testWallet.connect(provider);
+      const testContract = new ethers.Contract(PRIVACY_MANAGER, ABI_PRIVACY, testSigner);
+      
+      showToast('Registering stealth key for test wallet...', 'info');
+      const tx2 = await testContract.registerStealthKey('0x' + pubHex);
+      await tx2.wait();
+      
+      // Save test wallet's stealth priv key
+      try {
+        const store = JSON.parse(localStorage.getItem(LS_STEALTH_PRIV) || '{}');
+        store[testWallet.address] = key.getPrivate('hex');
+        localStorage.setItem(LS_STEALTH_PRIV, JSON.stringify(store));
+      } catch(e) {}
+      
+      document.getElementById('testWalletKeyStatus').textContent = '✅ Registered';
+      document.getElementById('testWalletKeyStatus').className = 'text-emerald-300';
+      
+      // Also register for main wallet if not done
+      const mainC = getPrivacyContract();
+      const mainKey = await mainC.getStealthKey(account);
+      if (!mainKey || mainKey === '0x' || mainKey.length < 10) {
+        showToast('Please also register your main wallet\'s stealth key using the "Register On-Chain" button.', 'info');
+      } else {
+        // Send a private message from test wallet to main wallet
+        showToast('Sending private message from Test Wallet to main wallet...', 'info');
+        
+        const testPrivHex = key.getPrivate('hex');
+        const ourPubHex = mainKey.replace('0x','');
+        
+        // ECDH
+        const ephKey = ec.genKeyPair();
+        const theirKey = ec.keyFromPublic('04' + ourPubHex, 'hex');
+        const shared = ephKey.derive(theirKey.getPublic());
+        const sharedHex = shared.toString(16).padStart(64, '0');
+        const symmetricKey = ethers.utils.keccak256('0x' + sharedHex);
+        
+        const testMsg = 'Hello from Test Wallet! PQ privacy works! 🎉';
+        const addrClean = account.replace('0x','').toLowerCase();
+        const payload = addrClean + testMsg;
+        const encrypted = xorCrypto(payload, symmetricKey);
+        const encryptedHex = bytesToHex(encrypted);
+        const ephPubArray = ephKey.getPublic().encode('array', false).slice(1);
+        const ephPubHex = bytesToHex(ephPubArray);
+        
+        const recipientHint = ethers.utils.keccak256(account);
+        const tx3 = await testContract.sendPrivate('0x' + ephPubHex, '0x' + encryptedHex, recipientHint);
+        await tx3.wait();
+        
+        showToast('📨 Test private message sent! Scan your inbox to see it.', 'success');
+        document.getElementById('privacyRecipient').value = testWallet.address;
+      }
+    }
+  } catch(e) {
+    showToast('Funding failed: ' + e.message, 'error');
+  }
+}
 </script>
 </body>
 </html>

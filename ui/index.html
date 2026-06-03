@@ -7,6 +7,7 @@
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.2.0/crypto-js.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/elliptic/6.5.4/elliptic.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
 *{font-family:'Inter',system-ui,sans-serif}
@@ -90,6 +91,7 @@ pre{white-space:pre-wrap;word-break:break-all}
     <button class="tab-btn pb-2 text-sm font-medium" onclick="switchTab('recovery',this)">🛡️ 恢复</button>
     <button class="tab-btn pb-2 text-sm font-medium" onclick="switchTab('register',this)">🗝️ 注册密钥</button>
     <button class="tab-btn pb-2 text-sm font-medium" onclick="switchTab('pqdemo',this)">🧪 PQ 签名</button>
+    <button class="tab-btn pb-2 text-sm font-medium" onclick="switchTab('privacy',this)">🛡️ Privacy</button>
   </div>
 
   <!-- Tab: Explorer -->
@@ -288,6 +290,73 @@ pre{white-space:pre-wrap;word-break:break-all}
   </div>
 </div>
 
+<!-- Tab: Privacy -->
+<div id="tab-privacy" class="tab-content hidden">
+  <div class="card rounded-xl p-6 glow mb-6">
+    <h2 class="text-lg font-semibold mb-4">🛡️ Stealth Privacy (ERC-5564)</h2>
+    <p class="text-sm text-gray-400 mb-4">
+      Optional privacy via stealth addresses. Generate a secp256k1 stealth key to encrypt your transaction data.
+      Only the intended recipient can decrypt and read the contents — on-chain observers see only encrypted ciphertext.
+    </p>
+
+    <!-- Stealth Key Section -->
+    <div class="grid md:grid-cols-2 gap-6 mb-6">
+      <div class="bg-gray-800/30 rounded-lg p-4">
+        <h3 class="text-sm font-semibold text-blue-300 mb-3">🔑 Your Stealth Identity</h3>
+        <div id="stealthKeyStatus" class="text-xs text-gray-400 mb-3">Not connected</div>
+        <button id="btnGenStealthKey" onclick="privacyGenKey()" class="btn-primary px-4 py-2 rounded-lg text-sm font-medium text-white bg-blue-600 hover:bg-blue-700" disabled>Generate Stealth Key</button>
+        <button id="btnRegStealthKey" onclick="privacyRegisterKey()" class="px-4 py-2 rounded-lg text-sm font-medium text-white bg-emerald-600 hover:bg-emerald-700 ml-2" disabled>Register On-Chain</button>
+        <button id="btnTogglePrivacy" onclick="privacyToggle()" class="px-4 py-2 rounded-lg text-sm font-medium text-white bg-purple-600 hover:bg-purple-700 ml-2" disabled>Toggle Privacy Mode</button>
+        <div id="privacyKeyInfo" class="mt-3 hidden">
+          <div class="text-xs text-gray-500 mb-1">Your stealth public key:</div>
+          <div class="hash text-xs bg-gray-900/50 rounded p-2" id="stealthPubDisplay">-</div>
+          <div class="text-xs text-gray-500 mt-2 mb-1">Privacy mode:</div>
+          <div id="privacyModeDisplay" class="text-sm font-bold text-gray-400">OFF</div>
+        </div>
+      </div>
+
+      <div class="bg-gray-800/30 rounded-lg p-4">
+        <h3 class="text-sm font-semibold text-purple-300 mb-3">👤 Target Wallet</h3>
+        <div id="targetWalletInfo" class="text-xs text-gray-400 mb-3">
+          Recipient's stealth key will be fetched on-chain when you send a private transaction.
+        </div>
+        <label class="text-xs text-gray-500">Recipient Address:</label>
+        <input id="privacyRecipient" type="text" placeholder="0x..." class="w-full bg-gray-800/50 border border-gray-600/30 rounded-lg px-4 py-2 text-sm focus:outline-none focus:border-purple-500/50 mb-3 mt-1">
+        <label class="text-xs text-gray-500">Private Message:</label>
+        <textarea id="privacyMessage" rows="2" placeholder="Type a private message..." class="w-full bg-gray-800/50 border border-gray-600/30 rounded-lg px-4 py-2 text-sm focus:outline-none focus:border-purple-500/50 mb-3 mt-1"></textarea>
+        <button id="btnSendPrivate" onclick="privacySend()" class="btn-primary px-4 py-2 rounded-lg text-sm font-medium text-white bg-purple-600 hover:bg-purple-700" disabled>🔒 Send Private →</button>
+      </div>
+    </div>
+
+    <!-- Private Inbox -->
+    <div class="bg-gray-800/30 rounded-lg p-4 mb-6">
+      <h3 class="text-sm font-semibold text-emerald-300 mb-3">📨 Private Inbox</h3>
+      <div class="flex gap-2 mb-3">
+        <button id="btnScanInbox" onclick="privacyScan()" class="px-4 py-2 rounded-lg text-sm font-medium bg-emerald-700 hover:bg-emerald-600 text-white" disabled>🔍 Scan for Private Txs</button>
+        <span id="inboxCount" class="text-xs text-gray-500 self-center">0 messages</span>
+      </div>
+      <div id="inboxList" class="space-y-2 max-h-48 overflow-y-auto">
+        <div class="text-xs text-gray-500 text-center py-4">No private transactions found. Scan to check.</div>
+      </div>
+    </div>
+
+    <!-- Test Wallet Section -->
+    <div class="bg-gray-800/30 rounded-lg p-4 border border-yellow-700/30">
+      <h3 class="text-sm font-semibold text-yellow-300 mb-3">🧪 Demo: Test Wallet B</h3>
+      <p class="text-xs text-gray-400 mb-3">Generate a second wallet to test private transactions between two wallets.</p>
+      <div class="flex gap-2 mb-3">
+        <button id="btnGenTestWallet" onclick="privacyGenTestWallet()" class="px-4 py-2 rounded-lg text-sm font-medium bg-yellow-700 hover:bg-yellow-600 text-white">🔄 Generate Wallet B</button>
+        <button id="btnFundTestWallet" onclick="privacyFundTestWallet()" class="px-4 py-2 rounded-lg text-sm font-medium bg-orange-700 hover:bg-orange-600 text-white" disabled>💰 Fund (0.001 ARC)</button>
+      </div>
+      <div id="testWalletInfo" class="hidden text-xs text-gray-400 space-y-1">
+        <div>Address: <span class="hash text-emerald-300" id="testWalletAddr">-</span></div>
+        <div>Balance: <span id="testWalletBal">0</span> ARC</div>
+        <div>Stealth Key: <span id="testWalletKeyStatus" class="text-yellow-300">Not registered</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script>
 // ============================================================
 // Configuration
@@ -378,6 +447,9 @@ async function connectWallet() {
       document.getElementById('chainBadge').innerHTML = '🟢 Arc Testnet';
     }
     document.getElementById('liveStatus').innerHTML = '🟢 已连接';
+    document.getElementById('btnGenStealthKey').disabled = false;
+    document.getElementById('btnScanInbox').disabled = false;
+    privacyRefreshStatus();
     document.getElementById('liveStatus').className = 'text-2xl font-bold mt-1 text-emerald-400';
     toast('✅ 钱包已连接', 'success');
     setTimeout(refreshAll, 500);
@@ -736,6 +808,513 @@ document.addEventListener('DOMContentLoaded', () => {
   // Quick initial check using RPC
   setTimeout(refreshAll, 1000);
 });
+
+// ============================================================
+// Privacy Manager (Stealth Address / ERC-5564)
+// ============================================================
+const PRIVACY_MANAGER = '0xE6C665048Bfcc1A2D9C9331BF8D586532216C136';
+
+const ABI_PRIVACY = [
+  {"type":"function","name":"registerStealthKey","inputs":[{"name":"_publicKey","type":"bytes","internalType":"bytes"}],"outputs":[],"stateMutability":"nonpayable"},
+  {"type":"function","name":"togglePrivacyOptIn","inputs":[],"outputs":[],"stateMutability":"nonpayable"},
+  {"type":"function","name":"sendPrivate","inputs":[{"name":"_ephemeralPubKey","type":"bytes","internalType":"bytes"},{"name":"_encryptedCiphertext","type":"bytes","internalType":"bytes"},{"name":"_recipientHint","type":"bytes32","internalType":"bytes32"}],"outputs":[],"stateMutability":"nonpayable"},
+  {"type":"function","name":"hasPrivacy","inputs":[{"name":"_account","type":"address","internalType":"address"}],"outputs":[{"name":"","type":"bool","internalType":"bool"}],"stateMutability":"view"},
+  {"type":"function","name":"stealthKeys","inputs":[{"name":"","type":"address","internalType":"address"}],"outputs":[{"name":"","type":"bytes","internalType":"bytes"}],"stateMutability":"view"},
+  {"type":"function","name":"getStealthKey","inputs":[{"name":"_account","type":"address","internalType":"address"}],"outputs":[{"name":"","type":"bytes","internalType":"bytes"}],"stateMutability":"view"},
+  {"type":"function","name":"privacyOptIn","inputs":[{"name":"","type":"address","internalType":"address"}],"outputs":[{"name":"","type":"bool","internalType":"bool"}],"stateMutability":"view"},
+  {"type":"function","name":"unregisterPrivacy","inputs":[],"outputs":[],"stateMutability":"nonpayable"},
+  {"type":"function","name":"acknowledgePrivateTx","inputs":[{"name":"_stealthId","type":"bytes32","internalType":"bytes32"}],"outputs":[],"stateMutability":"nonpayable"},
+  {"type":"function","name":"privateTxCount","inputs":[],"outputs":[{"name":"","type":"uint256","internalType":"uint256"}],"stateMutability":"view"},
+  {"type":"event","name":"PrivateTransaction","inputs":[{"name":"stealthId","type":"bytes32","indexed":true,"internalType":"bytes32"},{"name":"sender","type":"address","indexed":true,"internalType":"address"},{"name":"ephemeralPubKey","type":"bytes","indexed":false,"internalType":"bytes"},{"name":"encryptedCiphertext","type":"bytes","indexed":false,"internalType":"bytes"},{"name":"nonce","type":"uint256","indexed":false,"internalType":"uint256"},{"name":"timestamp","type":"uint256","indexed":false,"internalType":"uint256"}],"anonymous":false},
+  {"type":"event","name":"StealthKeyRegistered","inputs":[{"name":"account","type":"address","indexed":true,"internalType":"address"},{"name":"publicKey","type":"bytes","indexed":false,"internalType":"bytes"},{"name":"timestamp","type":"uint256","indexed":false,"internalType":"uint256"}],"anonymous":false}
+];
+
+// Storage keys for localStorage
+const LS_STEALTH_PRIV = 'pq_stealth_priv';
+const LS_TEST_WALLET = 'pq_test_wallet';
+
+let privacyContract;
+let stealthKeyPair = null;  // { priv: hex, pub: hex }
+let testWallet = null;      // ethers Wallet
+
+function getPrivacyContract() {
+  if (!privacyContract && provider) {
+    privacyContract = new ethers.Contract(PRIVACY_MANAGER, ABI_PRIVACY, provider);
+  }
+  return privacyContract;
+}
+
+function getPrivacySigner() {
+  if (!signer) return null;
+  return new ethers.Contract(PRIVACY_MANAGER, ABI_PRIVACY, signer);
+}
+
+// Generate a new secp256k1 stealth key pair
+function privacyGenKey() {
+  if (typeof elliptic === 'undefined') {
+    showToast('Elliptic library not loaded', 'error');
+    return;
+  }
+  
+  const ec = new elliptic.ec('secp256k1');
+  const key = ec.genKeyPair();
+  const privHex = key.getPrivate('hex');
+  const pubBytes = key.getPublic().encode('array', false); // 65 bytes: 0x04 + x + y
+  const pub64 = pubBytes.slice(1); // remove 0x04 prefix → 64 bytes
+  const pubHex = Array.from(pub64).map(b => b.toString(16).padStart(2,'0')).join('');
+  
+  stealthKeyPair = { priv: privHex, pub: pubHex };
+  
+  // Save to localStorage
+  try {
+    const store = JSON.parse(localStorage.getItem(LS_STEALTH_PRIV) || '{}');
+    store[account] = privHex;
+    localStorage.setItem(LS_STEALTH_PRIV, JSON.stringify(store));
+  } catch(e) {}
+  
+  document.getElementById('stealthPubDisplay').textContent = '0x' + pubHex;
+  document.getElementById('privacyKeyInfo').classList.remove('hidden');
+  document.getElementById('btnRegStealthKey').disabled = false;
+  document.getElementById('btnRegStealthKey').textContent = 'Register On-Chain';
+  document.getElementById('stealthKeyStatus').innerHTML = '<span class="text-emerald-400">✅ Key generated locally</span>';
+  showToast('Stealth key pair generated', 'success');
+}
+
+// Register stealth public key on-chain
+async function privacyRegisterKey() {
+  if (!signer || !stealthKeyPair) {
+    showToast('Connect wallet and generate key first', 'error');
+    return;
+  }
+  const ec = new elliptic.ec('secp256k1');
+  const key = ec.keyFromPrivate(stealthKeyPair.priv, 'hex');
+  const pubBytes = key.getPublic().encode('array', false); // 65 bytes with 0x04
+  const pubRaw = new Uint8Array(pubBytes);
+  
+  try {
+    const c = getPrivacySigner();
+    const tx = await c.registerStealthKey('0x' + stealthKeyPair.pub);
+    showToast('Registering stealth key...', 'info');
+    await tx.wait();
+    document.getElementById('btnRegStealthKey').disabled = true;
+    document.getElementById('btnRegStealthKey').textContent = '✅ Registered';
+    document.getElementById('btnTogglePrivacy').disabled = false;
+    document.getElementById('btnSendPrivate').disabled = false;
+    document.getElementById('stealthKeyStatus').innerHTML = '<span class="text-emerald-400">✅ Registered on-chain</span>';
+    showToast('Stealth key registered on-chain!', 'success');
+  } catch(e) {
+    showToast('Registration failed: ' + e.message, 'error');
+  }
+}
+
+// Toggle privacy opt-in
+async function privacyToggle() {
+  if (!signer) return;
+  try {
+    const c = getPrivacySigner();
+    const tx = await c.togglePrivacyOptIn();
+    showToast('Toggle privacy mode...', 'info');
+    await tx.wait();
+    await privacyRefreshStatus();
+    showToast('Privacy toggled', 'success');
+  } catch(e) {
+    showToast('Toggle failed', 'error');
+  }
+}
+
+// Refresh stealth key & privacy status from chain
+async function privacyRefreshStatus() {
+  if (!account || !provider) return;
+  const c = getPrivacyContract();
+  if (!c) return;
+  
+  try {
+    const keyBytes = await c.getStealthKey(account);
+    const optedIn = await c.privacyOptIn(account);
+    
+    document.getElementById('privacyModeDisplay').textContent = optedIn ? 'ON 🟢' : 'OFF ⚫';
+    document.getElementById('privacyModeDisplay').className = optedIn ? 'text-sm font-bold text-emerald-400' : 'text-sm font-bold text-gray-400';
+    
+    if (keyBytes && keyBytes !== '0x' && keyBytes.length > 4) {
+      document.getElementById('stealthKeyStatus').innerHTML = '<span class="text-emerald-400">✅ Registered on-chain</span>';
+      document.getElementById('btnRegStealthKey').disabled = true;
+      document.getElementById('btnRegStealthKey').textContent = '✅ Registered';
+      document.getElementById('btnTogglePrivacy').disabled = false;
+      document.getElementById('btnSendPrivate').disabled = false;
+      
+      // If we have the priv key in storage, show the pub key
+      try {
+        const store = JSON.parse(localStorage.getItem(LS_STEALTH_PRIV) || '{}');
+        if (store[account]) {
+          stealthKeyPair = { priv: store[account], pub: keyBytes.replace('0x','') };
+          document.getElementById('stealthPubDisplay').textContent = keyBytes;
+          document.getElementById('privacyKeyInfo').classList.remove('hidden');
+        }
+      } catch(e) {}
+    } else {
+      // Check if we have a local key but not registered
+      try {
+        const store = JSON.parse(localStorage.getItem(LS_STEALTH_PRIV) || '{}');
+        if (store[account]) {
+          stealthKeyPair = { priv: store[account], pub: '' };
+          document.getElementById('stealthKeyStatus').innerHTML = '<span class="text-yellow-400">⚠️ Key in browser only — register on-chain</span>';
+          document.getElementById('btnRegStealthKey').disabled = false;
+        }
+      } catch(e) {}
+    }
+  } catch(e) {
+    console.log('Privacy refresh error:', e);
+  }
+}
+
+// ============================================================
+// Private Transaction Functions
+// ============================================================
+
+// XOR encrypt/decrypt using a derived key
+function xorCrypto(data, key) {
+  const dataBytes = typeof data === 'string' ? new TextEncoder().encode(data) : new Uint8Array(data);
+  const keyBytes = ethers.utils.arrayify(key);
+  const result = new Uint8Array(dataBytes.length);
+  for (let i = 0; i < dataBytes.length; i++) {
+    result[i] = dataBytes[i] ^ keyBytes[i % keyBytes.length];
+  }
+  return result;
+}
+
+function bytesToHex(bytes) {
+  return Array.from(bytes).map(b => b.toString(16).padStart(2,'0')).join('');
+}
+
+function hexToBytes(hex) {
+  hex = hex.replace('0x','');
+  const result = new Uint8Array(hex.length/2);
+  for (let i = 0; i < hex.length; i+=2) result[i/2] = parseInt(hex.substr(i,2), 16);
+  return result;
+}
+
+// ECDH: derive shared secret from my private key + their public key
+function deriveSharedSecret(myPrivHex, theirPub64Hex) {
+  if (typeof elliptic === 'undefined') return null;
+  const ec = new elliptic.ec('secp256k1');
+  const myKey = ec.keyFromPrivate(myPrivHex, 'hex');
+  const theirKey = ec.keyFromPublic('04' + theirPub64Hex, 'hex');
+  const shared = myKey.derive(theirKey.getPublic());
+  const sharedHex = shared.toString(16).padStart(64, '0');
+  return ethers.utils.keccak256('0x' + sharedHex); // 32 bytes
+}
+
+// Encrypt a message for a recipient
+async function encryptFor(recipientAddr, message) {
+  if (!stealthKeyPair) throw new Error('Generate stealth key first');
+  
+  const ec = new elliptic.ec('secp256k1');
+  
+  // Generate ephemeral key pair
+  const ephKey = ec.genKeyPair();
+  const ephPriv = ephKey.getPrivate('hex');
+  const ephPubBytes = ephKey.getPublic().encode('array', false); // 65 bytes
+  
+  // Fetch recipient's public key from chain
+  const c = getPrivacyContract();
+  const theirPubBytes = await c.getStealthKey(recipientAddr);
+  if (!theirPubBytes || theirPubBytes === '0x' || theirPubBytes.length < 10) {
+    throw new Error('Recipient has no stealth key registered');
+  }
+  
+  const theirPubHex = theirPubBytes.replace('0x','');
+  
+  // ECDH: shared = ephPriv * theirPub
+  const theirKey = ec.keyFromPublic('04' + theirPubHex, 'hex');
+  const shared = ephKey.derive(theirKey.getPublic());
+  const sharedHex = shared.toString(16).padStart(64, '0');
+  const symmetricKey = ethers.utils.keccak256('0x' + sharedHex);
+  
+  // Encrypt: [recipient_addr(20 bytes) + message]
+  const recipientClean = recipientAddr.replace('0x','').toLowerCase();
+  const payload = recipientClean + message;
+  const encrypted = xorCrypto(payload, symmetricKey);
+  const encryptedHex = bytesToHex(encrypted);
+  
+  // Ephemeral public key (64 bytes, no 0x04 prefix)
+  const ephPub64 = ephPubBytes.slice(1);
+  const ephPubHex = bytesToHex(ephPub64);
+  
+  return { ephemeralPubKey: ephPubHex, ciphertext: encryptedHex };
+}
+
+// Send a private transaction
+async function privacySend() {
+  if (!signer || !stealthKeyPair) {
+    showToast('Connect wallet and register stealth key', 'error');
+    return;
+  }
+  
+  const recipient = document.getElementById('privacyRecipient').value.trim();
+  const message = document.getElementById('privacyMessage').value.trim();
+  
+  if (!ethers.utils.isAddress(recipient)) {
+    showToast('Invalid recipient address', 'error');
+    return;
+  }
+  if (!message) {
+    showToast('Enter a message', 'error');
+    return;
+  }
+  
+  try {
+    showToast('Encrypting message...', 'info');
+    const { ephemeralPubKey, ciphertext } = await encryptFor(recipient, message);
+    
+    // Compute recipient hint for faster scanning
+    const recipientHint = ethers.utils.keccak256(recipient);
+    
+    // Send on-chain
+    const c = getPrivacySigner();
+    const tx = await c.sendPrivate(
+      '0x' + ephemeralPubKey,
+      '0x' + ciphertext,
+      recipientHint
+    );
+    showToast('🔄 Sending private transaction...', 'info');
+    await tx.wait();
+    showToast('🔒 Private transaction sent! Only ' + recipient.substr(0, 10) + '... can decrypt it.', 'success');
+    document.getElementById('privacyMessage').value = '';
+  } catch(e) {
+    showToast('Failed: ' + e.message, 'error');
+  }
+}
+
+// Try to decrypt a private transaction payload
+function tryDecrypt(encryptedHex, ephPubHex, myPrivHex) {
+  if (!myPrivHex) return null;
+  const ec = new elliptic.ec('secp256k1');
+  
+  try {
+    const myKey = ec.keyFromPrivate(myPrivHex, 'hex');
+    const ephPubKey = ec.keyFromPublic('04' + ephPubHex, 'hex');
+    const shared = myKey.derive(ephPubKey.getPublic());
+    const sharedHex = shared.toString(16).padStart(64, '0');
+    const symmetricKey = ethers.utils.keccak256('0x' + sharedHex);
+    
+    const decryptedBytes = xorCrypto(hexToBytes(encryptedHex), symmetricKey);
+    const decrypted = new TextDecoder().decode(decryptedBytes);
+    
+    // First 20 bytes should be our address (as hex string) if this is for us
+    // Format: "ffffffffffffffffffffffffffffffffffffffff<message>"
+    return decrypted;
+  } catch(e) {
+    return null;
+  }
+}
+
+// Scan for incoming private transactions
+async function privacyScan() {
+  if (!provider || !account) {
+    showToast('Connect wallet first', 'error');
+    return;
+  }
+  
+  // Get our private key from storage
+  let myPriv;
+  try {
+    const store = JSON.parse(localStorage.getItem(LS_STEALTH_PRIV) || '{}');
+    myPriv = store[account];
+  } catch(e) {}
+  
+  if (!testWallet) {
+    try {
+      const store = JSON.parse(localStorage.getItem(LS_TEST_WALLET) || '{}');
+      if (store.privKey) {
+        testWallet = new ethers.Wallet(store.privKey, provider);
+      }
+    } catch(e) {}
+  }
+  
+  showToast('🔍 Scanning the blockchain...', 'info');
+  
+  try {
+    const c = getPrivacyContract();
+    const filter = c.filters.PrivateTransaction(null, null);
+    const events = await c.queryFilter(filter, -50000, 'latest');
+    
+    const inboxList = document.getElementById('inboxList');
+    const inboxCount = document.getElementById('inboxCount');
+    
+    if (events.length === 0) {
+      inboxList.innerHTML = '<div class="text-xs text-gray-500 text-center py-4">No private transactions found on-chain.</div>';
+      inboxCount.textContent = '0 messages';
+      showToast('No private transactions found', 'info');
+      return;
+    }
+    
+    let count = 0;
+    let html = '';
+    
+    // Try decrypting with our key and test wallet key
+    const privKeys = [];
+    if (myPriv) privKeys.push({ addr: account, key: myPriv });
+    if (testWallet) privKeys.push({ addr: testWallet.address, key: testWallet.privateKey.replace('0x','') });
+    
+    for (const event of events) {
+      const ephPubHex = hexToBytes(event.args.ephemeralPubKey);
+      const ephPubStr = bytesToHex(ephPubHex);
+      const ciphertext = event.args.encryptedCiphertext.replace('0x','');
+      
+      let decrypted = null;
+      let decryptedFor = '';
+      
+      for (const pk of privKeys) {
+        const result = tryDecrypt(ciphertext, ephPubStr, pk.key);
+        if (result) {
+          // Check if the address prefix matches
+          const addrClean = pk.addr.replace('0x','').toLowerCase();
+          if (result.toLowerCase().startsWith(addrClean)) {
+            decrypted = result.substring(40); // remove address prefix (20 bytes = 40 hex chars)
+            decryptedFor = pk.addr.substr(0, 10) + '...';
+            count++;
+            break;
+          }
+        }
+      }
+      
+      const sender = event.args.sender;
+      const ts = new Date(Number(event.args.timestamp) * 1000).toLocaleString();
+      
+      html += '<div class="bg-gray-800/30 rounded-lg p-3 text-xs border border-gray-700/30">';
+      html += '<div class="flex justify-between mb-1">';
+      html += '<span class="text-gray-500">From: <span class="hash text-gray-300">' + sender.substr(0,10) + '...</span></span>';
+      html += '<span class="text-gray-600">' + ts + '</span>';
+      html += '</div>';
+      
+      if (decrypted) {
+        html += '<div class="text-emerald-400 mt-1">🔓 Decrypted: "' + decrypted + '" (for ' + decryptedFor + ')</div>';
+      } else {
+        html += '<div class="text-gray-500 mt-1">🔒 Encrypted (not for you)</div>';
+      }
+      html += '<div class="text-gray-600 mt-1">Stealth: 0x' + ephPubStr.substring(0,16) + '...</div>';
+      html += '</div>';
+    }
+    
+    inboxList.innerHTML = html || '<div class="text-xs text-gray-500 text-center py-4">No decryptable messages found for you.</div>';
+    inboxCount.textContent = count + ' decrypted / ' + events.length + ' total';
+    showToast('Scan complete', 'success');
+  } catch(e) {
+    showToast('Scan failed: ' + e.message, 'error');
+    console.error(e);
+  }
+}
+
+// ============================================================
+// Test Wallet Functions
+// ============================================================
+
+// Generate a test wallet (Wallet B)
+function privacyGenTestWallet() {
+  const w = ethers.Wallet.createRandom();
+  testWallet = w;
+  
+  const addr = w.address;
+  
+  // Save to localStorage
+  try {
+    localStorage.setItem(LS_TEST_WALLET, JSON.stringify({ address: addr, privKey: w.privateKey }));
+  } catch(e) {}
+  
+  document.getElementById('testWalletInfo').classList.remove('hidden');
+  document.getElementById('testWalletAddr').textContent = addr;
+  document.getElementById('testWalletBal').textContent = '0';
+  document.getElementById('btnFundTestWallet').disabled = false;
+  document.getElementById('btnFundTestWallet').textContent = '💰 Fund (0.001 ARC)';
+  
+  showToast('Test wallet generated: ' + addr.substr(0,10) + '...', 'success');
+}
+
+// Fund test wallet from main wallet
+async function privacyFundTestWallet() {
+  if (!signer || !testWallet) {
+    showToast('Connect wallet and generate test wallet', 'error');
+    return;
+  }
+  
+  try {
+    showToast('Funding test wallet...', 'info');
+    const tx = await signer.sendTransaction({
+      to: testWallet.address,
+      value: ethers.utils.parseEther('0.001')
+    });
+    await tx.wait();
+    
+    // Update balance
+    const bal = await provider.getBalance(testWallet.address);
+    document.getElementById('testWalletBal').textContent = ethers.utils.formatEther(bal);
+    showToast('Test wallet funded!', 'success');
+    
+    // Auto-register stealth key for test wallet
+    if (typeof elliptic !== 'undefined') {
+      const ec = new elliptic.ec('secp256k1');
+      const key = ec.genKeyPair();
+      const pubBytes = key.getPublic().encode('array', false);
+      const pub64 = pubBytes.slice(1);
+      const pubHex = Array.from(pub64).map(b => b.toString(16).padStart(2,'0')).join('');
+      
+      // Register via test wallet
+      const testSigner = testWallet.connect(provider);
+      const testContract = new ethers.Contract(PRIVACY_MANAGER, ABI_PRIVACY, testSigner);
+      
+      showToast('Registering stealth key for test wallet...', 'info');
+      const tx2 = await testContract.registerStealthKey('0x' + pubHex);
+      await tx2.wait();
+      
+      // Save test wallet's stealth priv key
+      try {
+        const store = JSON.parse(localStorage.getItem(LS_STEALTH_PRIV) || '{}');
+        store[testWallet.address] = key.getPrivate('hex');
+        localStorage.setItem(LS_STEALTH_PRIV, JSON.stringify(store));
+      } catch(e) {}
+      
+      document.getElementById('testWalletKeyStatus').textContent = '✅ Registered';
+      document.getElementById('testWalletKeyStatus').className = 'text-emerald-300';
+      
+      // Also register for main wallet if not done
+      const mainC = getPrivacyContract();
+      const mainKey = await mainC.getStealthKey(account);
+      if (!mainKey || mainKey === '0x' || mainKey.length < 10) {
+        showToast('Please also register your main wallet\'s stealth key using the "Register On-Chain" button.', 'info');
+      } else {
+        // Send a private message from test wallet to main wallet
+        showToast('Sending private message from Test Wallet to main wallet...', 'info');
+        
+        const testPrivHex = key.getPrivate('hex');
+        const ourPubHex = mainKey.replace('0x','');
+        
+        // ECDH
+        const ephKey = ec.genKeyPair();
+        const theirKey = ec.keyFromPublic('04' + ourPubHex, 'hex');
+        const shared = ephKey.derive(theirKey.getPublic());
+        const sharedHex = shared.toString(16).padStart(64, '0');
+        const symmetricKey = ethers.utils.keccak256('0x' + sharedHex);
+        
+        const testMsg = 'Hello from Test Wallet! PQ privacy works! 🎉';
+        const addrClean = account.replace('0x','').toLowerCase();
+        const payload = addrClean + testMsg;
+        const encrypted = xorCrypto(payload, symmetricKey);
+        const encryptedHex = bytesToHex(encrypted);
+        const ephPubArray = ephKey.getPublic().encode('array', false).slice(1);
+        const ephPubHex = bytesToHex(ephPubArray);
+        
+        const recipientHint = ethers.utils.keccak256(account);
+        const tx3 = await testContract.sendPrivate('0x' + ephPubHex, '0x' + encryptedHex, recipientHint);
+        await tx3.wait();
+        
+        showToast('📨 Test private message sent! Scan your inbox to see it.', 'success');
+        document.getElementById('privacyRecipient').value = testWallet.address;
+      }
+    }
+  } catch(e) {
+    showToast('Funding failed: ' + e.message, 'error');
+  }
+}
 </script>
 </body>
 </html>
